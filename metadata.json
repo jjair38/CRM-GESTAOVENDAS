@@ -1,0 +1,6 @@
+{
+  "name": "Marketplace CRM & Dashboard Financeiro",
+  "description": "Sistema minimalista de CRM e Dashboard Financeiro para controle de vendas em Shopee e Mercado Livre com importação e cálculo automático.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
