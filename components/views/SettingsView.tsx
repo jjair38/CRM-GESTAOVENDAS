@@ -58,10 +58,10 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* Local Storage & Data Management */}
+      {/* Cloud Storage & Data Management */}
       <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-4">
-          Gerenciamento de Dados Locais
+          Gerenciamento de Dados (Nuvem)
         </h3>
 
         <div className="space-y-4 max-w-xl">
@@ -71,12 +71,27 @@ export default function SettingsView() {
                 Total de Registros Armazenados
               </div>
               <div className="text-[11px] text-neutral-500">
-                {sales.length} vendas gravadas localmente no navegador
+                {sales.length} vendas gravadas com segurança em sua conta
               </div>
             </div>
             <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-mono font-semibold text-neutral-700">
               {sales.length} itens
             </span>
+          </div>
+
+          <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+            <div>
+              <div className="text-xs font-medium text-neutral-900">
+                Segurança dos Dados
+              </div>
+              <div className="text-[11px] text-neutral-500">
+                Suas informações estão sincronizadas com sua conta Google
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+              <Shield className="h-3 w-3" />
+              <span>Sincronizado</span>
+            </div>
           </div>
 
           <div className="flex items-center justify-between border-b border-neutral-100 pb-3">

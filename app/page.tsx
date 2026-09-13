@@ -5,6 +5,7 @@ import { CRMProvider, useCRM } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import FilterBar from '@/components/FilterBar';
 import SaleModal from '@/components/SaleModal';
+import LoginScreen from '@/components/LoginScreen';
 import DashboardView from '@/components/views/DashboardView';
 import SalesView from '@/components/views/SalesView';
 import ProductsView from '@/components/views/ProductsView';
@@ -13,11 +14,23 @@ import ImportView from '@/components/views/ImportView';
 import GoogleSheetsView from '@/components/views/GoogleSheetsView';
 import ReportsView from '@/components/views/ReportsView';
 import SettingsView from '@/components/views/SettingsView';
-import { Menu, Plus, Bell, RefreshCw, Layers } from 'lucide-react';
+import { Menu, Plus, Bell, RefreshCw, Layers, Loader2 } from 'lucide-react';
 
 function MainApp() {
-  const { activeTab, openNewSaleModal } = useCRM();
+  const { activeTab, openNewSaleModal, user, isLoadingAuth } = useCRM();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (isLoadingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
+        <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
 
   const getTabTitle = () => {
     switch (activeTab) {

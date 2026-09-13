@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import Image from 'next/image';
 import { useCRM } from '@/lib/store';
 import {
   LayoutDashboard,
@@ -14,6 +14,8 @@ import {
   Plus,
   ArrowUpRight,
   Database,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,7 +24,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ mobileOpen = false, setMobileOpen }: SidebarProps) {
-  const { activeTab, setActiveTab, openNewSaleModal, sales } = useCRM();
+  const { activeTab, setActiveTab, openNewSaleModal, sales, user, logout } = useCRM();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -125,6 +127,40 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen }: SidebarPr
             );
           })}
         </nav>
+
+        {/* User Section Footer */}
+        <div className="border-t border-neutral-100 p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 px-1">
+              {user?.photoURL ? (
+                <Image 
+                  src={user.photoURL} 
+                  alt={user.displayName || 'User'} 
+                  width={32} 
+                  height={32} 
+                  className="h-8 w-8 rounded-full border border-neutral-200" 
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+                  <UserIcon className="h-4 w-4" />
+                </div>
+              )}
+              <div className="flex flex-1 flex-col overflow-hidden text-[11px]">
+                <span className="truncate font-semibold text-neutral-900">{user?.displayName || 'Usuário'}</span>
+                <span className="truncate text-neutral-500">{user?.email}</span>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => logout()}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sair do Sistema</span>
+            </button>
+          </div>
+        </div>
 
         {/* Channel Status Quick Footer */}
         <div className="border-t border-neutral-100 p-4">
