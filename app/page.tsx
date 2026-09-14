@@ -5,11 +5,9 @@ import { CRMProvider, useCRM } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import FilterBar from '@/components/FilterBar';
 import SaleModal from '@/components/SaleModal';
-import ProductModal from '@/components/ProductModal';
 import LoginScreen from '@/components/LoginScreen';
 import DashboardView from '@/components/views/DashboardView';
 import SalesView from '@/components/views/SalesView';
-import ProductsView from '@/components/views/ProductsView';
 import MarketplacesView from '@/components/views/MarketplacesView';
 import ImportView from '@/components/views/ImportView';
 import GoogleSheetsView from '@/components/views/GoogleSheetsView';
@@ -44,11 +42,6 @@ function MainApp() {
         return {
           title: 'Tabela de Vendas',
           subtitle: 'Histórico de lançamentos, custos, taxas e margens',
-        };
-      case 'produtos':
-        return {
-          title: 'Controle por Produto',
-          subtitle: 'Desempenho individual, margens unitárias e histórico',
         };
       case 'marketplaces':
         return {
@@ -132,14 +125,13 @@ function MainApp() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             {/* Show global filter bar on analytical views */}
-            {['dashboard', 'vendas', 'produtos', 'marketplaces', 'relatorios'].includes(
+            {['dashboard', 'vendas', 'marketplaces', 'relatorios'].includes(
               activeTab
             ) && <FilterBar />}
 
             {/* Active view renderer */}
             {activeTab === 'dashboard' && <DashboardView />}
             {activeTab === 'vendas' && <SalesView />}
-            {activeTab === 'produtos' && <ProductsView />}
             {activeTab === 'marketplaces' && <MarketplacesView />}
             {activeTab === 'importar' && <ImportView />}
             {activeTab === 'sheets' && <GoogleSheetsView />}
@@ -151,7 +143,6 @@ function MainApp() {
 
       {/* Global Sale Modal (New / Edit) */}
       <SaleModal />
-      <ProductModal />
     </div>
   );
 }

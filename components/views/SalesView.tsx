@@ -110,9 +110,14 @@ export default function SalesView() {
   };
 
   const handleDeleteSelected = async () => {
-    if (confirm(`Deseja realmente excluir ${selectedIds.size} venda(s)?`)) {
-      await deleteSalesBatch(Array.from(selectedIds));
-      setSelectedIds(new Set());
+    if (window.confirm(`Deseja realmente excluir ${selectedIds.size} venda(s)?`)) {
+      try {
+        await deleteSalesBatch(Array.from(selectedIds));
+        setSelectedIds(new Set());
+      } catch (err: any) {
+        console.error('Delete error:', err);
+        alert('Erro ao excluir vendas: ' + (err.message || 'Tente novamente.'));
+      }
     }
   };
 
@@ -424,9 +429,14 @@ export default function SalesView() {
                             <Copy className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm('Deseja excluir este lançamento de venda?')) {
-                                deleteSale(sale.id);
+                            onClick={async () => {
+                              if (window.confirm('Deseja excluir este lançamento de venda?')) {
+                                try {
+                                  await deleteSale(sale.id);
+                                } catch (err: any) {
+                                  console.error('Delete error:', err);
+                                  alert('Erro ao excluir venda: ' + (err.message || 'Tente novamente.'));
+                                }
                               }
                             }}
                             title="Excluir"

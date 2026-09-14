@@ -5,7 +5,6 @@ import { useCRM } from '@/lib/store';
 import {
   LayoutDashboard,
   ShoppingCart,
-  Package,
   Store,
   UploadCloud,
   FileSpreadsheet,
@@ -29,7 +28,6 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen }: SidebarPr
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'vendas', label: 'Vendas', icon: ShoppingCart, badge: sales.length },
-    { id: 'produtos', label: 'Produtos', icon: Package },
     { id: 'marketplaces', label: 'Marketplaces', icon: Store },
     { id: 'importar', label: 'Importar Dados', icon: UploadCloud },
     { id: 'sheets', label: 'Google Sheets', icon: FileSpreadsheet },

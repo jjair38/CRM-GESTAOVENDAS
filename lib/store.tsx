@@ -234,18 +234,22 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return;
         const fetchedSales: SaleItem[] = [];
         snapshot.forEach((doc) => {
-          fetchedSales.push({ id: doc.id, ...doc.data() } as SaleItem);
+          fetchedSales.push({ ...doc.data(), id: doc.id } as SaleItem);
         });
         setSales(fetchedSales);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `users/${user?.uid}/sales`);
       });
 
       const unsubscribeProducts = onSnapshot(qProducts, (snapshot) => {
         if (!isMounted) return;
         const fetchedProducts: Product[] = [];
         snapshot.forEach((doc) => {
-          fetchedProducts.push({ id: doc.id, ...doc.data() } as Product);
+          fetchedProducts.push({ ...doc.data(), id: doc.id } as Product);
         });
         setProducts(fetchedProducts);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `users/${user?.uid}/products`);
       });
 
       return () => {
@@ -261,20 +265,32 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       if (storedSales) {
         try {
           const parsed = JSON.parse(storedSales);
-          if (Array.isArray(parsed)) setSales(parsed);
+          if (Array.isArray(parsed)) {
+            setTimeout(() => {
+              if (isMounted) setSales(parsed);
+            }, 0);
+          }
         } catch (e) { console.warn('Failed to parse sales'); }
       } else {
         // Start empty
-        setSales([]);
+        setTimeout(() => {
+          if (isMounted) setSales([]);
+        }, 0);
       }
       
       if (storedProducts) {
         try {
           const parsed = JSON.parse(storedProducts);
-          if (Array.isArray(parsed)) setProducts(parsed);
+          if (Array.isArray(parsed)) {
+            setTimeout(() => {
+              if (isMounted) setProducts(parsed);
+            }, 0);
+          }
         } catch (e) { console.warn('Failed to parse products'); }
       } else {
-        setProducts([]);
+        setTimeout(() => {
+          if (isMounted) setProducts([]);
+        }, 0);
       }
 
       return () => { isMounted = false; };
@@ -786,7 +802,12 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const marketplaceSummaries: MarketplaceSummary[] = useMemo(() => {
     const mkts = ['SHOPEE', 'MERCADO LIVRE'];
     return mkts.map((mktName) => {
-      const items = filteredSales.filter((s) => s.marketplace.toUpperCase().includes(mktName.replace(' ', '')));
+      const items = filteredSales.filter((s) => {
+        const itemMkt = (s.marketplace || '').toUpperCase();
+        if (mktName === 'SHOPEE') return itemMkt.includes('SHOPEE');
+        if (mktName === 'MERCADO LIVRE') return itemMkt.includes('MERCADO');
+        return itemMkt.includes(mktName.toUpperCase());
+      });
       let faturamentoTotal = 0;
       let taxaTotal = 0;
       let repasseTotal = 0;
