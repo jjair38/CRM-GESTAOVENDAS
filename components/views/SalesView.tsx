@@ -26,6 +26,7 @@ export default function SalesView() {
   const {
     filteredSales,
     deleteSale,
+    deleteSalesBatch,
     duplicateSale,
     openEditSaleModal,
     openNewSaleModal,
@@ -108,9 +109,9 @@ export default function SalesView() {
     setSelectedIds(next);
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (confirm(`Deseja realmente excluir ${selectedIds.size} venda(s)?`)) {
-      selectedIds.forEach((id) => deleteSale(id));
+      await deleteSalesBatch(Array.from(selectedIds));
       setSelectedIds(new Set());
     }
   };

@@ -75,6 +75,7 @@ interface CRMContextType {
   addSale: (sale: Omit<SaleItem, 'id' | 'createdAt'>) => void;
   updateSale: (id: string, sale: Partial<SaleItem>) => void;
   deleteSale: (id: string) => void;
+  deleteSalesBatch: (ids: string[]) => Promise<void>;
   duplicateSale: (id: string) => void;
   importSales: (newSales: SaleItem[]) => number;
   clearAllSales: () => void;
@@ -124,6 +125,53 @@ const defaultFilters: FilterState = {
   searchQuery: '',
 };
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -159,6 +207,20 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     if (isLoadingAuth) return;
 
     let isMounted = true;
+
+    // Test Connection (Critical Constraint)
+    const testConnection = async () => {
+      if (user) {
+        try {
+          await getDocFromServer(doc(db, 'test', 'connection'));
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('the client is offline')) {
+            console.error("Please check your Firebase configuration.");
+          }
+        }
+      }
+    };
+    testConnection();
 
     if (user) {
       // User is logged in, fetch from Firestore
@@ -323,10 +385,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     };
 
     if (user) {
+      const path = `users/${user.uid}/sales/${id}`;
       try {
         await setDoc(doc(db, 'users', user.uid, 'sales', id), newSale);
       } catch (e) {
-        console.error('Error adding to Firestore:', e);
+        handleFirestoreError(e, OperationType.WRITE, path);
       }
     } else {
       setSales((prev) => [newSale, ...prev]);
@@ -350,10 +413,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     };
 
     if (user) {
+      const path = `users/${user.uid}/sales/${id}`;
       try {
         await setDoc(doc(db, 'users', user.uid, 'sales', id), updatedSale);
       } catch (e) {
-        console.error('Error updating in Firestore:', e);
+        handleFirestoreError(e, OperationType.WRITE, path);
       }
     } else {
       setSales((prev) => prev.map((s) => (s.id === id ? updatedSale : s)));
@@ -362,13 +426,40 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const deleteSale = async (id: string) => {
     if (user) {
+      const path = `users/${user.uid}/sales/${id}`;
       try {
         await deleteDoc(doc(db, 'users', user.uid, 'sales', id));
       } catch (e) {
-        console.error('Error deleting from Firestore:', e);
+        handleFirestoreError(e, OperationType.DELETE, path);
       }
     } else {
       setSales((prev) => prev.filter((item) => item.id !== id));
+    }
+  };
+
+  const deleteSalesBatch = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    
+    if (user) {
+      const path = `users/${user.uid}/sales`;
+      try {
+        const chunks = [];
+        for (let i = 0; i < ids.length; i += 500) {
+          chunks.push(ids.slice(i, i + 500));
+        }
+
+        for (const chunk of chunks) {
+          const batch = writeBatch(db);
+          chunk.forEach(id => {
+            batch.delete(doc(db, 'users', user.uid, 'sales', id));
+          });
+          await batch.commit();
+        }
+      } catch (e) {
+        handleFirestoreError(e, OperationType.DELETE, path);
+      }
+    } else {
+      setSales((prev) => prev.filter((item) => !ids.includes(item.id)));
     }
   };
 
@@ -384,10 +475,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     };
 
     if (user) {
+      const path = `users/${user.uid}/sales/${newId}`;
       try {
         await setDoc(doc(db, 'users', user.uid, 'sales', newId), duplicated);
       } catch (e) {
-        console.error('Error duplicating in Firestore:', e);
+        handleFirestoreError(e, OperationType.WRITE, path);
       }
     } else {
       setSales((prev) => [duplicated, ...prev]);
@@ -422,26 +514,30 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearAllSales = async () => {
-    if (user) {
-      if (sales.length === 0) return;
-      const batch = writeBatch(db);
-      sales.forEach(s => {
-        batch.delete(doc(db, 'users', user.uid, 'sales', s.id));
-      });
-      await batch.commit();
-    } else {
-      setSales([]);
-    }
+    if (sales.length === 0) return;
+    await deleteSalesBatch(sales.map(s => s.id));
   };
 
   const clearAllProducts = async () => {
+    if (products.length === 0) return;
+    
     if (user) {
-      if (products.length === 0) return;
-      const batch = writeBatch(db);
-      products.forEach(p => {
-        batch.delete(doc(db, 'users', user.uid, 'products', p.id));
-      });
-      await batch.commit();
+      try {
+        const chunks = [];
+        for (let i = 0; i < products.length; i += 500) {
+          chunks.push(products.slice(i, i + 500));
+        }
+
+        for (const chunk of chunks) {
+          const batch = writeBatch(db);
+          chunk.forEach(p => {
+            batch.delete(doc(db, 'users', user.uid, 'products', p.id));
+          });
+          await batch.commit();
+        }
+      } catch (e) {
+        handleFirestoreError(e, OperationType.DELETE, `users/${user.uid}/products`);
+      }
     } else {
       setProducts([]);
     }
@@ -469,10 +565,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     };
 
     if (user) {
+      const path = `users/${user.uid}/products/${id}`;
       try {
         await setDoc(doc(db, 'users', user.uid, 'products', id), newProduct);
       } catch (e) {
-        console.error('Error adding product to Firestore:', e);
+        handleFirestoreError(e, OperationType.WRITE, path);
       }
     } else {
       setProducts((prev) => [newProduct, ...prev]);
@@ -486,10 +583,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     const updatedProduct = { ...item, ...updatedFields };
 
     if (user) {
+      const path = `users/${user.uid}/products/${id}`;
       try {
         await setDoc(doc(db, 'users', user.uid, 'products', id), updatedProduct);
       } catch (e) {
-        console.error('Error updating product in Firestore:', e);
+        handleFirestoreError(e, OperationType.WRITE, path);
       }
     } else {
       setProducts((prev) => prev.map((p) => (p.id === id ? updatedProduct : p)));
@@ -498,10 +596,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const deleteProduct = async (id: string) => {
     if (user) {
+      const path = `users/${user.uid}/products/${id}`;
       try {
         await deleteDoc(doc(db, 'users', user.uid, 'products', id));
       } catch (e) {
-        console.error('Error deleting product from Firestore:', e);
+        handleFirestoreError(e, OperationType.DELETE, path);
       }
     } else {
       setProducts((prev) => prev.filter((item) => item.id !== id));
@@ -906,6 +1005,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         addSale,
         updateSale,
         deleteSale,
+        deleteSalesBatch,
         duplicateSale,
         importSales,
         clearAllSales,
