@@ -113,23 +113,34 @@ export function formatPercent(value: number): string {
 
 export function formatDateBR(dateStr: string): string {
   if (!dateStr) return '';
-  // If already DD/MM/YYYY
+  
+  // Se já estiver no formato DD/MM/YYYY, apenas retorna
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
   
-  // If YYYY-MM-DD
+  // Se for formato ISO YYYY-MM-DD (com ou sem tempo)
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Fallback seguro usando split se houver traços
   const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const [year, month, day] = parts;
+  if (parts.length >= 3) {
+    const [year, month, dayPart] = parts;
+    const day = dayPart.substring(0, 2);
     return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
   }
   
+  // Fallback para objeto Date, mas evitando fuso horário
   const d = new Date(dateStr);
   if (!isNaN(d.getTime())) {
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
     return `${day}/${month}/${year}`;
   }
+  
   return dateStr;
 }
 
@@ -138,25 +149,26 @@ export function parseDateToISO(dateStr: string): string {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
+  
   const clean = String(dateStr).trim();
   
-  // Handle DD/MM/YYYY
+  // Prioridade Total para DD/MM/YYYY
   if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(clean)) {
     const [d, m, y] = clean.split('/');
     return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
   
-  // Handle YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    return clean;
+  // Se já for YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+    return clean.substring(0, 10);
   }
 
-  // Handle Date parse safely
+  // Parse de Date evitando inversão MM/DD
   const parsed = new Date(clean);
   if (!isNaN(parsed.getTime())) {
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, '0');
-    const day = String(parsed.getDate()).padStart(2, '0');
+    const year = parsed.getUTCFullYear();
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
