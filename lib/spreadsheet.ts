@@ -33,6 +33,9 @@ function normalizeHeader(header: string): string {
 export function detectColumnField(rawHeader: string): keyof SaleItem | null {
   const norm = normalizeHeader(rawHeader);
 
+  if (norm === 'id' || norm === 'codigo' || norm === 'referencia') {
+    return 'id';
+  }
   if (norm.includes('market') || norm.includes('canal') || norm.includes('plataforma') || norm === 'mkt') {
     return 'marketplace';
   }
@@ -167,20 +170,21 @@ export async function parseSpreadsheetFile(file: File): Promise<ImportPreviewRes
     });
 
     // Fallbacks if columns weren't by name but positional matching user's specification A-M:
-    // A: Marketplace, B: Data, C: Produto, D: Material, E: Energia, F: Filamento, G: Manutencao, H: Custo, I: Venda, J: Taxa, K: Repasse, L: Lucro, M: Porcentagem
-    if (!itemDict.marketplace && row[0]) itemDict.marketplace = row[0];
-    if (!itemDict.data && row[1]) itemDict.data = row[1];
-    if (!itemDict.produto && row[2]) itemDict.produto = row[2];
-    if (!itemDict.material && row[3]) itemDict.material = row[3];
-    if (itemDict.energia === undefined && row[4] !== undefined) itemDict.energia = row[4];
-    if (itemDict.filamento === undefined && row[5] !== undefined) itemDict.filamento = row[5];
-    if (itemDict.manutencao === undefined && row[6] !== undefined) itemDict.manutencao = row[6];
-    if (itemDict.custo === undefined && row[7] !== undefined) itemDict.custo = row[7];
-    if (itemDict.venda === undefined && row[8] !== undefined) itemDict.venda = row[8];
-    if (itemDict.taxa === undefined && row[9] !== undefined) itemDict.taxa = row[9];
-    if (itemDict.repasse === undefined && row[10] !== undefined) itemDict.repasse = row[10];
-    if (itemDict.lucro === undefined && row[11] !== undefined) itemDict.lucro = row[11];
-    if (itemDict.porcentagem === undefined && row[12] !== undefined) itemDict.porcentagem = row[12];
+    // A: ID, B: Marketplace, C: Data, D: Produto, E: Material, F: Energia, G: Filamento, H: Manutencao, I: Custo, J: Venda, K: Taxa, L: Repasse, M: Lucro, N: Porcentagem
+    if (!itemDict.id && row[0]) itemDict.id = String(row[0]).trim();
+    if (!itemDict.marketplace && row[1]) itemDict.marketplace = row[1];
+    if (!itemDict.data && row[2]) itemDict.data = row[2];
+    if (!itemDict.produto && row[3]) itemDict.produto = row[3];
+    if (!itemDict.material && row[4]) itemDict.material = row[4];
+    if (itemDict.energia === undefined && row[5] !== undefined) itemDict.energia = row[5];
+    if (itemDict.filamento === undefined && row[6] !== undefined) itemDict.filamento = row[6];
+    if (itemDict.manutencao === undefined && row[7] !== undefined) itemDict.manutencao = row[7];
+    if (itemDict.custo === undefined && row[8] !== undefined) itemDict.custo = row[8];
+    if (itemDict.venda === undefined && row[9] !== undefined) itemDict.venda = row[9];
+    if (itemDict.taxa === undefined && row[10] !== undefined) itemDict.taxa = row[10];
+    if (itemDict.repasse === undefined && row[11] !== undefined) itemDict.repasse = row[11];
+    if (itemDict.lucro === undefined && row[12] !== undefined) itemDict.lucro = row[12];
+    if (itemDict.porcentagem === undefined && row[13] !== undefined) itemDict.porcentagem = row[13];
 
     const rawMarketplace = String(itemDict.marketplace || 'SHOPEE').trim().toUpperCase();
     const marketplace = rawMarketplace.includes('MERCADO') || rawMarketplace.includes('ML') ? 'MERCADO LIVRE' : 'SHOPEE';
@@ -229,7 +233,7 @@ export async function parseSpreadsheetFile(file: File): Promise<ImportPreviewRes
     }
 
     const item: SaleItem = {
-      id: `imported-${Date.now().toString(36)}-${rowIdx}`,
+      id: String(itemDict.id || `imported-${Date.now().toString(36)}-${rowIdx}`).trim(),
       marketplace,
       data: isoDate,
       produto: produto || 'Produto sem nome',
@@ -267,6 +271,7 @@ export async function parseSpreadsheetFile(file: File): Promise<ImportPreviewRes
 // Generate Downloadable CSV Model matching user's exact specification
 export function generateCSVTemplate(): string {
   const headers = [
+    'ID',
     'MARKETPLACE',
     'DATA',
     'Produto',
@@ -284,6 +289,7 @@ export function generateCSVTemplate(): string {
 
   const sampleRows = [
     [
+      'V001',
       'SHOPEE',
       '01/09/2026',
       '20x Porta Bombom Pomo de Ouro Harry Potter 3D',
@@ -299,6 +305,7 @@ export function generateCSVTemplate(): string {
       '191,87',
     ],
     [
+      'V002',
       'MERCADO LIVRE',
       '02/09/2026',
       'Adaptador Mini Bowens para Flash Speedlite',
@@ -314,6 +321,7 @@ export function generateCSVTemplate(): string {
       '244,99',
     ],
     [
+      'V003',
       'MERCADO LIVRE',
       '03/09/2026',
       'Suporte Articulado Câmera Web Mesa Gamer',
@@ -355,6 +363,7 @@ export function downloadCSVTemplate(): void {
 // Export Sales to CSV
 export function exportSalesToCSV(sales: SaleItem[], filename = 'vendas_marketplace.csv'): void {
   const headers = [
+    'ID',
     'MARKETPLACE',
     'DATA',
     'Produto',
@@ -371,6 +380,7 @@ export function exportSalesToCSV(sales: SaleItem[], filename = 'vendas_marketpla
   ];
 
   const rows = sales.map((s) => [
+    s.id,
     s.marketplace,
     formatDateBR(s.data),
     s.produto,
@@ -404,6 +414,7 @@ export function exportSalesToCSV(sales: SaleItem[], filename = 'vendas_marketpla
 // Export Sales to Excel (.xlsx)
 export function exportSalesToExcel(sales: SaleItem[], filename = 'vendas_marketplace.xlsx'): void {
   const data = sales.map((s) => ({
+    ID: s.id,
     MARKETPLACE: s.marketplace,
     DATA: formatDateBR(s.data),
     Produto: s.produto,
@@ -422,6 +433,7 @@ export function exportSalesToExcel(sales: SaleItem[], filename = 'vendas_marketp
   const worksheet = XLSX.utils.json_to_sheet(data);
   // Configure column widths
   worksheet['!cols'] = [
+    { wch: 20 }, // ID
     { wch: 16 }, // MARKETPLACE
     { wch: 12 }, // DATA
     { wch: 40 }, // Produto

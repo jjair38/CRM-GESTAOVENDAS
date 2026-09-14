@@ -401,11 +401,22 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         const id = sale.id || `sale-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
         const saleWithId = { ...sale, id, createdAt: sale.createdAt || new Date().toISOString() };
         const docRef = doc(db, 'users', user.uid, 'sales', id);
-        batch.set(docRef, saleWithId);
+        batch.set(docRef, saleWithId); // set with merge or just set? Batch set is fine for upsert if we want to overwrite
       });
       batch.commit().catch(e => console.error('Error batch importing:', e));
     } else {
-      setSales((prev) => [...newSales, ...prev]);
+      setSales((prev) => {
+        const updatedSales = [...prev];
+        newSales.forEach(newSale => {
+          const index = updatedSales.findIndex(s => s.id === newSale.id);
+          if (index !== -1) {
+            updatedSales[index] = { ...updatedSales[index], ...newSale };
+          } else {
+            updatedSales.unshift({ ...newSale, createdAt: newSale.createdAt || new Date().toISOString() });
+          }
+        });
+        return updatedSales;
+      });
     }
     return newSales.length;
   };

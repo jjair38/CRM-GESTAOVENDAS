@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useCRM } from '@/lib/store';
 import { SaleItem, formatBRL, formatPercent, formatDateBR } from '@/lib/types';
-import { exportSalesToCSV, exportSalesToExcel } from '@/lib/spreadsheet';
+import { exportSalesToCSV, exportSalesToExcel, parseSpreadsheetFile, downloadCSVTemplate } from '@/lib/spreadsheet';
 import {
   Search,
   Plus,
@@ -31,9 +31,33 @@ export default function SalesView() {
     openNewSaleModal,
     filters,
     setFilter,
+    importSales,
   } = useCRM();
 
   const [sortColumn, setSortColumn] = useState<SortColumn>('data');
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      const result = await parseSpreadsheetFile(file);
+      if (result.allItems.length > 0) {
+        const count = importSales(result.allItems);
+        alert(`${count} vendas importadas/atualizadas com sucesso!`);
+      } else {
+        alert('Nenhuma venda válida encontrada no arquivo.');
+      }
+    } catch (err: any) {
+      console.error('Import error:', err);
+      alert('Erro ao importar arquivo: ' + (err.message || 'Verifique o formato do arquivo.'));
+    } finally {
+      setIsImporting(false);
+      e.target.value = ''; // clear input
+    }
+  };
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
@@ -153,6 +177,33 @@ export default function SalesView() {
             <span>Excel</span>
           </button>
 
+          <div className="h-6 w-px bg-neutral-200 mx-1 hidden sm:block" />
+
+          <button
+            onClick={() => downloadCSVTemplate()}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+            title="Baixar modelo de CSV para importação"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Modelo</span>
+          </button>
+
+          <label className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer transition-colors">
+            {isImporting ? (
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-800" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )}
+            <span>Importar CSV</span>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={handleImportCSV}
+              disabled={isImporting}
+            />
+          </label>
+
           <button
             id="new-sale-main-btn"
             onClick={openNewSaleModal}
@@ -178,6 +229,7 @@ export default function SalesView() {
                     className="rounded-sm border-neutral-300 text-neutral-900"
                   />
                 </th>
+                <th className="py-3 px-3 text-left">ID</th>
                 <th
                   onClick={() => handleSort('data')}
                   className="group cursor-pointer py-3 px-3 hover:text-neutral-900"
@@ -292,6 +344,9 @@ export default function SalesView() {
                           onChange={() => toggleSelectOne(sale.id)}
                           className="rounded-sm border-neutral-300 text-neutral-900"
                         />
+                      </td>
+                      <td className="py-3 px-3 whitespace-nowrap text-[10px] text-neutral-400 font-mono max-w-[60px] truncate" title={sale.id}>
+                        {sale.id}
                       </td>
                       <td className="py-3 px-3 whitespace-nowrap text-neutral-600 font-mono text-[11px]">
                         {formatDateBR(sale.data)}
