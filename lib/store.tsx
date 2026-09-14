@@ -235,6 +235,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
           console.error('Error signing in with redirect:', redirectError);
           alert('Erro ao tentar login via redirecionamento. Verifique suas configurações de cookies.');
         }
+      } else if (error.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        alert(`Este domínio (${domain}) não está autorizado no seu projeto Firebase.\n\nPara corrigir:\n1. Acesse o Console do Firebase\n2. Vá em Autenticação > Configurações > Domínios Autorizados\n3. Adicione o domínio: ${domain}`);
       } else {
         alert('Erro ao fazer login: ' + (error.message || 'Erro desconhecido'));
       }
