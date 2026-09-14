@@ -5,7 +5,7 @@ import { useCRM } from '@/lib/store';
 import { Settings, RotateCcw, Trash2, Database, Check, Shield } from 'lucide-react';
 
 export default function SettingsView() {
-  const { sales, resetDemoData, clearAllSales, clearAllProducts } = useCRM();
+  const { sales, clearAllSales, clearAllProducts } = useCRM();
   const [hourlyRate, setHourlyRate] = useState('0,84');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -92,28 +92,6 @@ export default function SettingsView() {
               <Shield className="h-3 w-3" />
               <span>Sincronizado</span>
             </div>
-          </div>
-
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-            <div>
-              <div className="text-xs font-medium text-neutral-900">
-                Restaurar Dados Demonstrativos
-              </div>
-              <div className="text-[11px] text-neutral-500">
-                Recarrega as vendas de exemplo para Shopee e Mercado Livre
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (confirm('Deseja restaurar as vendas de demonstração?')) {
-                  resetDemoData();
-                }
-              }}
-              className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>Restaurar Demo</span>
-            </button>
           </div>
 
           <div className="flex items-center justify-between pt-1">

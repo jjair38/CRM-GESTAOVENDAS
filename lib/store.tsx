@@ -80,7 +80,6 @@ interface CRMContextType {
   importSales: (newSales: SaleItem[]) => number;
   clearAllSales: () => void;
   clearAllProducts: () => void;
-  resetDemoData: () => void;
 
   addProduct: (product: Omit<Product, 'id' | 'createdAt'>) => void;
   updateProduct: (id: string, product: Partial<Product>) => void;
@@ -559,19 +558,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const resetDemoData = async () => {
-    const initial = generateInitialSales();
-    if (user) {
-      const batch = writeBatch(db);
-      initial.forEach(s => {
-        batch.set(doc(db, 'users', user.uid, 'sales', s.id), s);
-      });
-      await batch.commit();
-    } else {
-      setSales(initial);
-    }
-  };
-
   const addProduct = async (productData: Omit<Product, 'id' | 'createdAt'>) => {
     const id = `prod-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
     const newProduct: Product = {
@@ -1047,7 +1033,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         importSales,
         clearAllSales,
         clearAllProducts,
-        resetDemoData,
         filteredSales,
         kpis,
         productSummaries,

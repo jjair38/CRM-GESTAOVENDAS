@@ -152,9 +152,10 @@ export function parseDateToISO(dateStr: string): string {
   
   const clean = String(dateStr).trim();
   
-  // Prioridade Total para DD/MM/YYYY
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(clean)) {
-    const [d, m, y] = clean.split('/');
+  // Prioridade Total para DD/MM/YYYY ou DD-MM-YYYY
+  const brMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (brMatch) {
+    const [, d, m, y] = brMatch;
     return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
   

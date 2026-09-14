@@ -110,7 +110,11 @@ export function parseNumberValue(val: any): number {
 // Parse Excel / CSV File
 export async function parseSpreadsheetFile(file: File): Promise<ImportPreviewResult> {
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  
+  // Para CSV, não deixamos a biblioteca tentar converter datas (evita inversão mês/dia)
+  // Deixamos como string bruta e tratamos com nossa parseDateToISO que prioriza BR
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: !isCSV });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) {
     throw new Error('Nenhuma planilha encontrada no arquivo.');
