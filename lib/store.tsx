@@ -19,8 +19,11 @@ import {
   db, 
   googleProvider, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   signOut, 
   onAuthStateChanged, 
+  browserPopupRedirectResolver,
   collection, 
   doc, 
   setDoc, 
@@ -116,6 +119,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   // Auth Listener
   useEffect(() => {
+    // Verificar resultado de redirecionamento (caso o popup tenha falhado e tentamos redirect)
+    getRedirectResult(auth).catch((error) => {
+      console.error('Error getting redirect result:', error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsLoadingAuth(false);
@@ -212,9 +220,26 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error('Error signing in:', error);
+      setIsLoadingAuth(true);
+      // Tentamos o Popup primeiro com o Resolver
+      await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
+    } catch (error: any) {
+      console.error('Error signing in with popup:', error);
+      
+      // Se o popup fechar imediatamente ou for bloqueado, tentamos o Redirect como fallback automático
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+        console.log('Popup failed, trying redirect...');
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectError) {
+          console.error('Error signing in with redirect:', redirectError);
+          alert('Erro ao tentar login via redirecionamento. Verifique suas configurações de cookies.');
+        }
+      } else {
+        alert('Erro ao fazer login: ' + (error.message || 'Erro desconhecido'));
+      }
+    } finally {
+      setIsLoadingAuth(false);
     }
   };
 
