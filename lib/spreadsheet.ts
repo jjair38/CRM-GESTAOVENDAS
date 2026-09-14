@@ -192,7 +192,11 @@ export async function parseSpreadsheetFile(file: File): Promise<ImportPreviewRes
     // Parse date
     let rawDate = itemDict.data;
     if (rawDate instanceof Date) {
-      rawDate = rawDate.toISOString().split('T')[0];
+      // Use local date components to avoid timezone shifts (toISOString can shift dates by -1 day)
+      const year = rawDate.getFullYear();
+      const month = String(rawDate.getMonth() + 1).padStart(2, '0');
+      const day = String(rawDate.getDate()).padStart(2, '0');
+      rawDate = `${year}-${month}-${day}`;
     }
     const isoDate = parseDateToISO(String(rawDate || ''));
 

@@ -11,7 +11,6 @@ import SalesView from '@/components/views/SalesView';
 import MarketplacesView from '@/components/views/MarketplacesView';
 import ImportView from '@/components/views/ImportView';
 import GoogleSheetsView from '@/components/views/GoogleSheetsView';
-import ReportsView from '@/components/views/ReportsView';
 import SettingsView from '@/components/views/SettingsView';
 import { Menu, Plus, Bell, RefreshCw, Layers, Loader2 } from 'lucide-react';
 
@@ -57,11 +56,6 @@ function MainApp() {
         return {
           title: 'Integração Google Sheets',
           subtitle: 'Sincronização contínua com prevenção de duplicidade',
-        };
-      case 'relatorios':
-        return {
-          title: 'Relatórios Mensais',
-          subtitle: 'Demonstrativos contábeis e exportação em CSV, Excel e PDF',
         };
       case 'configuracoes':
         return {
@@ -125,7 +119,7 @@ function MainApp() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             {/* Show global filter bar on analytical views */}
-            {['dashboard', 'vendas', 'marketplaces', 'relatorios'].includes(
+            {['dashboard', 'vendas', 'marketplaces'].includes(
               activeTab
             ) && <FilterBar />}
 
@@ -135,7 +129,6 @@ function MainApp() {
             {activeTab === 'marketplaces' && <MarketplacesView />}
             {activeTab === 'importar' && <ImportView />}
             {activeTab === 'sheets' && <GoogleSheetsView />}
-            {activeTab === 'relatorios' && <ReportsView />}
             {activeTab === 'configuracoes' && <SettingsView />}
           </div>
         </main>

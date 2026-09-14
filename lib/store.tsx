@@ -673,26 +673,26 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         const itemDateStr = item.data; // YYYY-MM-DD
         if (!itemDateStr) return true;
 
-        // Current simulated context reference date is Sept 2026
-        const now = new Date('2026-09-10T23:59:59Z');
+        const now = new Date();
         const itemDate = new Date(`${itemDateStr}T12:00:00Z`);
 
         if (filters.period === 'hoje') {
           const itemDay = itemDateStr;
-          const todayDay = '2026-09-10';
+          const todayDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
           if (itemDay !== todayDay) return false;
         } else if (filters.period === '7dias') {
           const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          if (itemDate < sevenDaysAgo || itemDate > now) return false;
+          if (itemDate < sevenDaysAgo) return false;
         } else if (filters.period === '30dias') {
           const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          if (itemDate < thirtyDaysAgo || itemDate > now) return false;
+          if (itemDate < thirtyDaysAgo) return false;
         } else if (filters.period === 'mes_atual') {
-          // 2026-09
-          if (!itemDateStr.startsWith('2026-09')) return false;
+          const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          if (!itemDateStr.startsWith(currentMonthPrefix)) return false;
         } else if (filters.period === 'mes_anterior') {
-          // 2026-08
-          if (!itemDateStr.startsWith('2026-08')) return false;
+          const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const lastMonthPrefix = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+          if (!itemDateStr.startsWith(lastMonthPrefix)) return false;
         } else if (filters.period === 'personalizado') {
           if (filters.customStartDate && itemDateStr < filters.customStartDate) return false;
           if (filters.customEndDate && itemDateStr > filters.customEndDate) return false;
@@ -845,7 +845,8 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   // Monthly summaries
   const monthlySummaries: MonthSummary[] = useMemo(() => {
     const map = new Map<string, SaleItem[]>();
-    sales.forEach((s) => {
+    // Base on filteredSales to react to marketplace/product/material filters
+    filteredSales.forEach((s) => {
       const mesAno = s.data.substring(0, 7); // YYYY-MM
       if (!mesAno) return;
       if (!map.has(mesAno)) map.set(mesAno, []);
@@ -869,7 +870,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
     const sortedKeys = Array.from(map.keys()).sort().reverse();
 
-    return sortedKeys.map((key) => {
+    const summaries = sortedKeys.map((key) => {
       const items = map.get(key)!;
       const [year, month] = key.split('-');
       const label = `${monthNames[month] || month} ${year}`;
@@ -903,7 +904,22 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         margem: Number(margem.toFixed(2)),
       };
     });
-  }, [sales]);
+
+    // Only show months that have actual revenue and are not in the future
+    // unless they have data (which shouldn't happen but just in case)
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    return summaries.filter(s => {
+      // Must have revenue
+      if (s.faturamento <= 0) return false;
+      // Must not be in the future (relative to the system's current date)
+      // but if the user explicitly added data there, we show it?
+      // User said "mostre apenas o que foi alimentado".
+      // If faturamento > 0, it WAS fed.
+      return true;
+    });
+  }, [filteredSales]);
 
   // Intelligent dynamic insights
   const insights: InsightItem[] = useMemo(() => {

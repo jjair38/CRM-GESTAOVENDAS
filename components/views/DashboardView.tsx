@@ -20,6 +20,17 @@ import {
   Flame,
 } from 'lucide-react';
 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
+
 export default function DashboardView() {
   const {
     kpis,
@@ -33,6 +44,9 @@ export default function DashboardView() {
   } = useCRM();
 
   const [productRankingTab, setProductRankingTab] = useState<'vendidos' | 'lucrativos'>('lucrativos');
+
+  // Prepare data for the chart (reversed to show chronological order)
+  const chartData = [...monthlySummaries].reverse().slice(-6); // Last 6 months
 
   // Sort products for ranking
   const rankedProducts = [...productSummaries].sort((a, b) => {
@@ -215,15 +229,15 @@ export default function DashboardView() {
 
       {/* Main Analysis Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 1. Evolução Financeira / Faturamento & Lucro (Left 2 cols) */}
+        {/* 1. Faturamento por Mês (Chart - Left 2 cols) */}
         <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs lg:col-span-2">
           <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
             <div>
               <h3 className="text-sm font-semibold text-neutral-900">
-                Evolução Financeira
+                Faturamento por Mês
               </h3>
               <p className="text-xs text-neutral-500">
-                Faturamento e Lucro mês a mês
+                Visão mensal baseada nas vendas registradas
               </p>
             </div>
             <div className="flex items-center gap-4 text-xs">
@@ -231,66 +245,92 @@ export default function DashboardView() {
                 <span className="h-2.5 w-2.5 rounded-sm bg-neutral-900" />
                 <span className="text-neutral-600 font-medium">Faturamento</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
-                <span className="text-neutral-600 font-medium">Lucro Líquido</span>
-              </div>
             </div>
           </div>
 
-          {/* Bar Chart Visualization */}
-          <div className="mt-6 space-y-4">
-            {monthlySummaries.slice(0, 4).map((m) => {
-              const maxVal = Math.max(...monthlySummaries.map((x) => x.faturamento), 1);
-              const fatWidth = Math.min(100, Math.max(5, (m.faturamento / maxVal) * 100));
-              const lucWidth = Math.min(100, Math.max(5, (m.lucro / maxVal) * 100));
-
-              return (
-                <div key={m.mesAno} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-neutral-800">{m.label}</span>
-                    <div className="flex items-center gap-3 text-[11px] text-neutral-500">
-                      <span>Fat: <strong className="text-neutral-900">{formatBRL(m.faturamento)}</strong></span>
-                      <span>Lucro: <strong className="text-emerald-600">{formatBRL(m.lucro)}</strong></span>
-                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-600">
-                        {m.margem.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    {/* Faturamento Bar */}
-                    <div className="h-3 w-full rounded-full bg-neutral-100">
-                      <div
-                        className="h-3 rounded-full bg-neutral-900 transition-all duration-500"
-                        style={{ width: `${fatWidth}%` }}
-                      />
-                    </div>
-                    {/* Lucro Bar */}
-                    <div className="h-2 w-full rounded-full bg-neutral-100">
-                      <div
-                        className="h-2 rounded-full bg-emerald-500 transition-all duration-500"
-                        style={{ width: `${lucWidth}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-5 border-t border-neutral-100 pt-3 text-right">
-            <button
-              onClick={() => setActiveTab('relatorios')}
-              className="text-xs font-medium text-neutral-700 hover:text-neutral-900 hover:underline"
-            >
-              Ver relatório mensal completo &rarr;
-            </button>
+          <div className="mt-6 h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="label" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#888' }} 
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#888' }} 
+                  tickFormatter={(value) => `R$ ${value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value}`}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f8f8f8' }}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontSize: '12px' }}
+                  formatter={(value: any) => [formatBRL(Number(value) || 0), 'Faturamento']}
+                />
+                <Bar 
+                  dataKey="faturamento" 
+                  fill="#171717" 
+                  radius={[4, 4, 0, 0]} 
+                  barSize={40}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={index === chartData.length - 1 ? '#171717' : '#e5e5e5'} 
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* 2. Comparativo Marketplaces: Shopee x Mercado Livre (Right 1 col) */}
+        {/* 2. Consolidado Mensal (Right 1 col) */}
         <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+          <div className="border-b border-neutral-100 pb-4">
+            <h3 className="text-sm font-semibold text-neutral-900">
+              Consolidado por Mês
+            </h3>
+            <p className="text-xs text-neutral-500">
+              Resumo financeiro dos últimos meses
+            </p>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {monthlySummaries.slice(0, 4).map((m) => (
+              <div key={m.mesAno} className="rounded-lg border border-neutral-100 bg-neutral-50/30 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-900">{m.label}</span>
+                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                    {m.margem.toFixed(0)}% Margem
+                  </span>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase">Fat.</span>
+                    <div className="text-xs font-semibold text-neutral-800">{formatBRL(m.faturamento)}</div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase">Lucro</span>
+                    <div className="text-xs font-semibold text-emerald-600">{formatBRL(m.lucro)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {monthlySummaries.length === 0 && (
+              <div className="py-8 text-center text-xs text-neutral-400">
+                Sem dados mensais para exibir.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Comparativo Marketplaces: Shopee x Mercado Livre */}
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs lg:col-span-3">
           <div className="border-b border-neutral-100 pb-4">
             <h3 className="text-sm font-semibold text-neutral-900">
               Shopee vs Mercado Livre
@@ -300,7 +340,7 @@ export default function DashboardView() {
             </p>
           </div>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Shopee Card */}
             <div className="rounded-lg border border-neutral-200/80 bg-neutral-50/40 p-3.5">
               <div className="flex items-center justify-between">

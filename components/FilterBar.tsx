@@ -16,13 +16,25 @@ export default function FilterBar() {
     sales,
   } = useCRM();
 
+  const now = new Date();
+  const currentMonthName = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ][now.getMonth()];
+  
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthName = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ][lastMonthDate.getMonth()];
+
   const periodOptions: { id: PeriodFilter; label: string }[] = [
     { id: 'todos', label: 'Todo o histórico' },
     { id: 'hoje', label: 'Hoje' },
     { id: '7dias', label: 'Últimos 7 dias' },
     { id: '30dias', label: 'Últimos 30 dias' },
-    { id: 'mes_atual', label: 'Este mês (Setembro)' },
-    { id: 'mes_anterior', label: 'Mês anterior (Agosto)' },
+    { id: 'mes_atual', label: `Este mês (${currentMonthName})` },
+    { id: 'mes_anterior', label: `Mês anterior (${lastMonthName})` },
     { id: 'personalizado', label: 'Personalizado' },
   ];
 

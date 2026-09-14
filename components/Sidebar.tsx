@@ -31,7 +31,6 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen }: SidebarPr
     { id: 'marketplaces', label: 'Marketplaces', icon: Store },
     { id: 'importar', label: 'Importar Dados', icon: UploadCloud },
     { id: 'sheets', label: 'Google Sheets', icon: FileSpreadsheet },
-    { id: 'relatorios', label: 'Relatórios', icon: FileText },
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];
 

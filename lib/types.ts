@@ -134,7 +134,10 @@ export function formatDateBR(dateStr: string): string {
 }
 
 export function parseDateToISO(dateStr: string): string {
-  if (!dateStr) return new Date().toISOString().split('T')[0];
+  if (!dateStr) {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
   const clean = String(dateStr).trim();
   
   // Handle DD/MM/YYYY
@@ -148,13 +151,17 @@ export function parseDateToISO(dateStr: string): string {
     return clean;
   }
 
-  // Handle Date parse
+  // Handle Date parse safely
   const parsed = new Date(clean);
   if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function calculateRepasse(venda: number, taxa: number): number {
