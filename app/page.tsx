@@ -5,6 +5,7 @@ import { CRMProvider, useCRM } from '@/lib/store';
 import Sidebar from '@/components/Sidebar';
 import FilterBar from '@/components/FilterBar';
 import SaleModal from '@/components/SaleModal';
+import ProductModal from '@/components/ProductModal';
 import LoginScreen from '@/components/LoginScreen';
 import DashboardView from '@/components/views/DashboardView';
 import SalesView from '@/components/views/SalesView';
@@ -150,6 +151,7 @@ function MainApp() {
 
       {/* Global Sale Modal (New / Edit) */}
       <SaleModal />
+      <ProductModal />
     </div>
   );
 }

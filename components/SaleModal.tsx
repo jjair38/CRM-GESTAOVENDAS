@@ -13,6 +13,8 @@ interface SaleFormContentProps {
 }
 
 function SaleFormContent({ editingSale, onClose, onSave, allProductNames }: SaleFormContentProps) {
+  const { products } = useCRM();
+
   const [marketplace, setMarketplace] = useState<'SHOPEE' | 'MERCADO LIVRE'>(() => {
     if (editingSale?.marketplace) {
       return editingSale.marketplace.includes('MERCADO') ? 'MERCADO LIVRE' : 'SHOPEE';
@@ -20,15 +22,31 @@ function SaleFormContent({ editingSale, onClose, onSave, allProductNames }: Sale
     return 'SHOPEE';
   });
 
-  const [data, setData] = useState<string>(() => editingSale?.data || '2026-09-10');
+  const [data, setData] = useState<string>(() => editingSale?.data || new Date().toISOString().split('T')[0]);
   const [produto, setProduto] = useState<string>(() => editingSale?.produto || '');
   const [material, setMaterial] = useState<string>(() => editingSale?.material || 'PLA');
-  const [energia, setEnergia] = useState<string>(() => String(editingSale?.energia ?? '1.80'));
-  const [filamento, setFilamento] = useState<string>(() => String(editingSale?.filamento ?? '12.50'));
-  const [manutencao, setManutencao] = useState<string>(() => String(editingSale?.manutencao ?? '3.36'));
-  const [custo, setCusto] = useState<string>(() => String(editingSale?.custo ?? '17.66'));
-  const [venda, setVenda] = useState<string>(() => String(editingSale?.venda ?? '79.90'));
-  const [taxa, setTaxa] = useState<string>(() => String(editingSale?.taxa ?? '15.98'));
+  const [energia, setEnergia] = useState<string>(() => String(editingSale?.energia ?? ''));
+  const [filamento, setFilamento] = useState<string>(() => String(editingSale?.filamento ?? ''));
+  const [manutencao, setManutencao] = useState<string>(() => String(editingSale?.manutencao ?? ''));
+  const [custo, setCusto] = useState<string>(() => String(editingSale?.custo ?? ''));
+  const [venda, setVenda] = useState<string>(() => String(editingSale?.venda ?? ''));
+  const [taxa, setTaxa] = useState<string>(() => String(editingSale?.taxa ?? ''));
+
+  // Auto-fill from catalog
+  const handleProductChange = (val: string) => {
+    setProduto(val);
+    const catalogProd = products.find(p => p.nome === val);
+    if (catalogProd) {
+      setMaterial(catalogProd.material);
+      setEnergia(String(catalogProd.energia));
+      setFilamento(String(catalogProd.filamento));
+      setManutencao(String(catalogProd.manutencao));
+      setCusto(String(catalogProd.custoTotal));
+      if (catalogProd.precoSugerido && !editingSale) {
+        setVenda(String(catalogProd.precoSugerido));
+      }
+    }
+  };
 
   const handleCostPartChange = (field: 'energia' | 'filamento' | 'manutencao', val: string) => {
     const e = field === 'energia' ? parseFloat(val) || 0 : parseFloat(energia) || 0;
@@ -114,11 +132,14 @@ function SaleFormContent({ editingSale, onClose, onSave, allProductNames }: Sale
             list="product-suggestions"
             placeholder="Ex: 20x Porta Bombom Pomo de Ouro 3D"
             value={produto}
-            onChange={(e) => setProduto(e.target.value)}
+            onChange={(e) => handleProductChange(e.target.value)}
             className="w-full rounded-lg border border-neutral-200 py-1.5 px-2.5 text-neutral-800 placeholder-neutral-400 focus:border-neutral-400 focus:outline-hidden"
           />
           <datalist id="product-suggestions">
-            {allProductNames.map((p) => (
+            {products.map((p) => (
+              <option key={p.id} value={p.nome} />
+            ))}
+            {allProductNames.filter(name => !products.some(p => p.nome === name)).map((p) => (
               <option key={p} value={p} />
             ))}
           </datalist>

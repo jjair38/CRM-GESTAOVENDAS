@@ -9,6 +9,7 @@ import {
   MarketplaceSummary,
   MonthSummary,
   InsightItem,
+  Product,
   calculateRepasse,
   calculateLucro,
   calculatePorcentagem,
@@ -26,6 +27,7 @@ import {
   browserPopupRedirectResolver,
   collection, 
   doc, 
+  getDoc,
   setDoc, 
   getDocs, 
   deleteDoc, 
@@ -34,11 +36,13 @@ import {
   orderBy, 
   onSnapshot,
   User,
-  writeBatch
+  writeBatch,
+  getDocFromServer
 } from './firebase';
 
 interface CRMContextType {
   sales: SaleItem[];
+  products: Product[];
   filters: FilterState;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -57,6 +61,13 @@ interface CRMContextType {
   openNewSaleModal: () => void;
   openEditSaleModal: (sale: SaleItem) => void;
   closeSaleModal: () => void;
+
+  isProductModalOpen: boolean;
+  editingProduct: Product | null;
+  openNewProductModal: () => void;
+  openEditProductModal: (product: Product) => void;
+  closeProductModal: () => void;
+
   selectedProductForDetail: string | null;
   setSelectedProductForDetail: (productName: string | null) => void;
 
@@ -67,7 +78,12 @@ interface CRMContextType {
   duplicateSale: (id: string) => void;
   importSales: (newSales: SaleItem[]) => number;
   clearAllSales: () => void;
+  clearAllProducts: () => void;
   resetDemoData: () => void;
+
+  addProduct: (product: Omit<Product, 'id' | 'createdAt'>) => void;
+  updateProduct: (id: string, product: Partial<Product>) => void;
+  deleteProduct: (id: string) => void;
 
   // Computed data
   filteredSales: SaleItem[];
@@ -90,11 +106,13 @@ interface CRMContextType {
   insights: InsightItem[];
   allProductNames: string[];
   allMaterials: string[];
+  catalogProducts: Product[];
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'marketplace_crm_sales_v1';
+const PRODUCTS_STORAGE_KEY = 'marketplace_crm_products_v1';
 
 const defaultFilters: FilterState = {
   period: 'todos',
@@ -110,11 +128,16 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [sales, setSales] = useState<SaleItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<SaleItem | null>(null);
+  
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<string | null>(null);
 
   // Auth Listener
@@ -140,83 +163,73 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       // User is logged in, fetch from Firestore
       const salesRef = collection(db, 'users', user.uid, 'sales');
-      const q = query(salesRef, orderBy('createdAt', 'desc'));
+      const productsRef = collection(db, 'users', user.uid, 'products');
       
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const qSales = query(salesRef, orderBy('createdAt', 'desc'));
+      const qProducts = query(productsRef, orderBy('createdAt', 'desc'));
+      
+      const unsubscribeSales = onSnapshot(qSales, (snapshot) => {
         if (!isMounted) return;
-
         const fetchedSales: SaleItem[] = [];
         snapshot.forEach((doc) => {
           fetchedSales.push({ id: doc.id, ...doc.data() } as SaleItem);
         });
-        
-        if (fetchedSales.length > 0) {
-          setSales(fetchedSales);
-        } else {
-          // If Firestore is empty, try to migrate from LocalStorage or use Demo data
-          const stored = localStorage.getItem(STORAGE_KEY);
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                // Bulk upload to Firestore
-                const batch = writeBatch(db);
-                parsed.forEach((sale) => {
-                  const newDocRef = doc(collection(db, 'users', user.uid, 'sales'), sale.id);
-                  batch.set(newDocRef, sale);
-                });
-                batch.commit().then(() => {
-                  if (isMounted) setSales(parsed);
-                });
-                localStorage.removeItem(STORAGE_KEY);
-              }
-            } catch (e) {
-              console.warn('Failed to migrate data:', e);
-            }
-          } else {
-            // No local data, use demo
-            if (isMounted) setSales(generateInitialSales());
-          }
-        }
+        setSales(fetchedSales);
       });
+
+      const unsubscribeProducts = onSnapshot(qProducts, (snapshot) => {
+        if (!isMounted) return;
+        const fetchedProducts: Product[] = [];
+        snapshot.forEach((doc) => {
+          fetchedProducts.push({ id: doc.id, ...doc.data() } as Product);
+        });
+        setProducts(fetchedProducts);
+      });
+
       return () => {
         isMounted = false;
-        unsubscribe();
+        unsubscribeSales();
+        unsubscribeProducts();
       };
     } else {
       // User is NOT logged in, use LocalStorage
-      const stored = localStorage.getItem(STORAGE_KEY);
-      let initialSales = generateInitialSales();
-      if (stored) {
+      const storedSales = localStorage.getItem(STORAGE_KEY);
+      const storedProducts = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+      
+      if (storedSales) {
         try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            initialSales = parsed;
-          }
-        } catch (e) {
-          console.warn('Failed to parse local storage');
-        }
+          const parsed = JSON.parse(storedSales);
+          if (Array.isArray(parsed)) setSales(parsed);
+        } catch (e) { console.warn('Failed to parse sales'); }
+      } else {
+        // Start empty
+        setSales([]);
       }
       
-      const loadLocalData = () => {
-        if (isMounted) setSales(initialSales);
-      };
-      
-      loadLocalData();
+      if (storedProducts) {
+        try {
+          const parsed = JSON.parse(storedProducts);
+          if (Array.isArray(parsed)) setProducts(parsed);
+        } catch (e) { console.warn('Failed to parse products'); }
+      } else {
+        setProducts([]);
+      }
+
       return () => { isMounted = false; };
     }
   }, [user, isLoadingAuth]);
 
   // Save to LocalStorage ONLY if not logged in
   useEffect(() => {
-    if (!user && sales.length > 0) {
+    if (!user) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(sales));
+        localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
       } catch (e) {
         console.warn('Failed to save to localStorage:', e);
       }
     }
-  }, [sales, user]);
+  }, [sales, products, user]);
 
   const login = async () => {
     try {
@@ -276,6 +289,21 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const closeSaleModal = () => {
     setIsSaleModalOpen(false);
     setEditingSale(null);
+  };
+
+  const openNewProductModal = () => {
+    setEditingProduct(null);
+    setIsProductModalOpen(true);
+  };
+
+  const openEditProductModal = (product: Product) => {
+    setEditingProduct(product);
+    setIsProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
   };
 
   const addSale = async (saleData: Omit<SaleItem, 'id' | 'createdAt'>) => {
@@ -384,7 +412,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   const clearAllSales = async () => {
     if (user) {
-      if (!confirm('Deseja realmente apagar TODAS as vendas da nuvem?')) return;
+      if (sales.length === 0) return;
       const batch = writeBatch(db);
       sales.forEach(s => {
         batch.delete(doc(db, 'users', user.uid, 'sales', s.id));
@@ -392,6 +420,19 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       await batch.commit();
     } else {
       setSales([]);
+    }
+  };
+
+  const clearAllProducts = async () => {
+    if (user) {
+      if (products.length === 0) return;
+      const batch = writeBatch(db);
+      products.forEach(p => {
+        batch.delete(doc(db, 'users', user.uid, 'products', p.id));
+      });
+      await batch.commit();
+    } else {
+      setProducts([]);
     }
   };
 
@@ -405,6 +446,54 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       await batch.commit();
     } else {
       setSales(initial);
+    }
+  };
+
+  const addProduct = async (productData: Omit<Product, 'id' | 'createdAt'>) => {
+    const id = `prod-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+    const newProduct: Product = {
+      ...productData,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (user) {
+      try {
+        await setDoc(doc(db, 'users', user.uid, 'products', id), newProduct);
+      } catch (e) {
+        console.error('Error adding product to Firestore:', e);
+      }
+    } else {
+      setProducts((prev) => [newProduct, ...prev]);
+    }
+  };
+
+  const updateProduct = async (id: string, updatedFields: Partial<Product>) => {
+    const item = products.find(p => p.id === id);
+    if (!item) return;
+
+    const updatedProduct = { ...item, ...updatedFields };
+
+    if (user) {
+      try {
+        await setDoc(doc(db, 'users', user.uid, 'products', id), updatedProduct);
+      } catch (e) {
+        console.error('Error updating product in Firestore:', e);
+      }
+    } else {
+      setProducts((prev) => prev.map((p) => (p.id === id ? updatedProduct : p)));
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'users', user.uid, 'products', id));
+      } catch (e) {
+        console.error('Error deleting product from Firestore:', e);
+      }
+    } else {
+      setProducts((prev) => prev.filter((item) => item.id !== id));
     }
   };
 
@@ -809,6 +898,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         duplicateSale,
         importSales,
         clearAllSales,
+        clearAllProducts,
         resetDemoData,
         filteredSales,
         kpis,
@@ -818,6 +908,16 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         insights,
         allProductNames,
         allMaterials,
+        products,
+        isProductModalOpen,
+        editingProduct,
+        openNewProductModal,
+        openEditProductModal,
+        closeProductModal,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        catalogProducts: products,
       }}
     >
       {children}

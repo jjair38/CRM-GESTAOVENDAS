@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, User, browserPopupRedirectResolver } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy, onSnapshot, writeBatch, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDoc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy, onSnapshot, writeBatch, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -26,6 +26,7 @@ export {
   browserPopupRedirectResolver,
   collection,
   doc,
+  getDoc,
   setDoc,
   getDocs,
   deleteDoc,
@@ -33,6 +34,7 @@ export {
   query,
   orderBy,
   onSnapshot,
-  writeBatch
+  writeBatch,
+  getDocFromServer
 };
 export type { User };

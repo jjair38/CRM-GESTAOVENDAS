@@ -17,6 +17,18 @@ export interface SaleItem {
   createdAt?: string;
 }
 
+export interface Product {
+  id: string;
+  nome: string;
+  material: string;
+  energia: number;
+  filamento: number;
+  manutencao: number;
+  custoTotal: number;
+  precoSugerido?: number;
+  createdAt?: string;
+}
+
 export type PeriodFilter = 'hoje' | '7dias' | '30dias' | 'mes_atual' | 'mes_anterior' | 'personalizado' | 'todos';
 
 export interface FilterState {

@@ -5,7 +5,7 @@ import { useCRM } from '@/lib/store';
 import { Settings, RotateCcw, Trash2, Database, Check, Shield } from 'lucide-react';
 
 export default function SettingsView() {
-  const { sales, resetDemoData, clearAllSales } = useCRM();
+  const { sales, resetDemoData, clearAllSales, clearAllProducts } = useCRM();
   const [hourlyRate, setHourlyRate] = useState('0,84');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -134,7 +134,29 @@ export default function SettingsView() {
               className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span>Limpar Base</span>
+              <span>Limpar Vendas</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <div className="text-xs font-medium text-red-600">
+                Zerar Catálogo de Produtos
+              </div>
+              <div className="text-[11px] text-neutral-500">
+                Remove todos os produtos cadastrados no catálogo
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (confirm('Atenção: deseja realmente apagar TODOS os produtos do catálogo?')) {
+                  clearAllProducts();
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Zerar Produtos</span>
             </button>
           </div>
         </div>

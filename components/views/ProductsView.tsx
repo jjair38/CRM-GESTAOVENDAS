@@ -9,10 +9,9 @@ import {
   ArrowRight,
   TrendingUp,
   X,
-  Calendar,
-  Layers,
-  ShoppingBag,
-  ExternalLink,
+  Plus,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 
 export default function ProductsView() {
@@ -21,13 +20,20 @@ export default function ProductsView() {
     selectedProductForDetail,
     setSelectedProductForDetail,
     sales,
-    openEditSaleModal,
+    products,
+    openNewProductModal,
+    openEditProductModal,
   } = useCRM();
 
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'performance' | 'catalog'>('catalog');
 
-  const filteredProducts = productSummaries.filter((p) =>
+  const filteredSummaries = productSummaries.filter((p) =>
     p.produto.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredCatalog = products.filter((p) =>
+    p.nome.toLowerCase().includes(search.toLowerCase())
   );
 
   // Selected product detail data
@@ -41,260 +47,277 @@ export default function ProductsView() {
 
   return (
     <div id="products-view" className="space-y-6">
-      {/* Search Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Header & Tabs */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-neutral-900">
-            Catálogo & Performance de Produtos
+          <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
+            <Package className="h-5 w-5 text-neutral-400" />
+            Gestão de Produtos
           </h2>
           <p className="text-xs text-neutral-500">
-            Métricas acumuladas e médias unitárias por produto fabricado
+            Cadastre seus custos fixos e acompanhe a performance de cada item
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-neutral-200 bg-white p-1">
+            <button
+              onClick={() => setViewMode('catalog')}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                viewMode === 'catalog'
+                  ? 'bg-neutral-900 text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900'
+              }`}
+            >
+              Catálogo
+            </button>
+            <button
+              onClick={() => setViewMode('performance')}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                viewMode === 'performance'
+                  ? 'bg-neutral-900 text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900'
+              }`}
+            >
+              Performance
+            </button>
+          </div>
+          
+          <button
+            onClick={openNewProductModal}
+            className="flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-neutral-200 hover:bg-neutral-800 active:scale-95 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            Cadastrar Produto
+          </button>
+        </div>
+      </div>
+
+      {/* Search & Stats Bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between rounded-2xl border border-neutral-100 bg-white p-4 shadow-sm">
+        <div className="relative flex-1 max-w-md">
           <Search className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-neutral-400" />
           <input
             type="text"
-            placeholder="Buscar por nome do produto..."
+            placeholder={viewMode === 'catalog' ? "Buscar no catálogo..." : "Buscar performance..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-neutral-200 bg-white py-1.5 pr-3 pl-9 text-xs text-neutral-800 placeholder-neutral-400 transition-colors focus:border-neutral-400 focus:outline-hidden"
+            className="w-full rounded-xl border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-9 text-xs text-neutral-800 placeholder-neutral-400 transition-all focus:border-neutral-900 focus:bg-white focus:outline-none"
           />
         </div>
+
+        {viewMode === 'catalog' ? (
+          <div className="flex items-center gap-4 text-xs font-medium text-neutral-500">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider opacity-60">Total Itens</span>
+              <span className="text-neutral-900 font-bold">{products.length}</span>
+            </div>
+            <div className="h-6 w-px bg-neutral-100" />
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider opacity-60">Materiais</span>
+              <span className="text-neutral-900 font-bold">{new Set(products.map(p => p.material)).size}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 text-xs font-medium text-neutral-500">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider opacity-60">Produtos com Venda</span>
+              <span className="text-neutral-900 font-bold">{productSummaries.length}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Products Table */}
-      <div className="rounded-xl border border-neutral-200 bg-white shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-neutral-200 bg-neutral-50/80 text-[11px] font-medium text-neutral-600 uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Produto</th>
-                <th className="py-3 px-3">Canais</th>
-                <th className="py-3 px-3">Material</th>
-                <th className="py-3 px-3 text-center">Vendas</th>
-                <th className="py-3 px-3 text-right">Preço Médio</th>
-                <th className="py-3 px-3 text-right">Custo Médio</th>
-                <th className="py-3 px-3 text-right">Taxa Média</th>
-                <th className="py-3 px-3 text-right">Lucro Médio</th>
-                <th className="py-3 px-3 text-right">Margem</th>
-                <th className="py-3 px-3 text-right">Faturamento</th>
-                <th className="py-3 px-3 text-right">Lucro Total</th>
-                <th className="py-3 pr-4 pl-2 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 text-neutral-700">
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={12} className="py-10 text-center text-neutral-400">
-                    Nenhum produto cadastrado ou correspondente à busca.
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((p) => (
-                  <tr
-                    key={p.produto}
-                    className="cursor-pointer transition-colors hover:bg-neutral-50/80"
-                    onClick={() => setSelectedProductForDetail(p.produto)}
-                  >
-                    <td className="py-3 px-4 font-medium text-neutral-900 max-w-xs truncate" title={p.produto}>
-                      {p.produto}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        {p.marketplaces.map((m) => (
-                          <span
-                            key={m}
-                            className={`rounded-sm px-1.5 py-0.5 text-[9px] font-semibold ${
-                              m === 'SHOPEE'
-                                ? 'bg-amber-50 text-amber-800'
-                                : 'bg-yellow-50 text-yellow-900'
-                            }`}
-                          >
-                            {m === 'MERCADO LIVRE' ? 'ML' : 'SHP'}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap text-[11px] text-neutral-600">
-                      {p.materials.join(', ')}
-                    </td>
-                    <td className="py-3 px-3 text-center font-semibold text-neutral-900">
-                      {p.totalVendas}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap text-neutral-800">
-                      {formatBRL(p.precoMedioVenda)}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap text-neutral-600">
-                      {formatBRL(p.custoMedio)}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap text-amber-700">
-                      {formatBRL(p.taxaMedia)}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap font-medium text-emerald-600">
-                      {formatBRL(p.lucroMedio)}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap">
-                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-800">
-                        {p.margemMedia.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap font-semibold text-neutral-900">
-                      {formatBRL(p.faturamentoTotal)}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap font-bold text-emerald-600">
-                      {formatBRL(p.lucroTotal)}
-                    </td>
-                    <td className="py-3 pr-4 pl-2 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedProductForDetail(p.produto);
-                        }}
-                        className="rounded p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900"
-                        title="Ver histórico detalhado"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Product Detail Modal / Drawer */}
-      {selectedProductSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-neutral-100 p-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600">
-                    Histórico & Detalhes do Produto
-                  </span>
-                  <span className="text-xs text-neutral-400">
-                    {selectedProductSummary.materials.join(', ')}
+      {/* Main Content Area */}
+      {viewMode === 'catalog' ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredCatalog.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 bg-neutral-50 rounded-2xl border-2 border-dashed border-neutral-200">
+              <Package className="h-12 w-12 text-neutral-300 mb-3" />
+              <p className="text-sm font-medium text-neutral-500">Nenhum produto cadastrado no catálogo.</p>
+              <button 
+                onClick={openNewProductModal}
+                className="mt-4 text-xs font-bold text-neutral-900 underline underline-offset-4"
+              >
+                Clique aqui para cadastrar o primeiro
+              </button>
+            </div>
+          ) : (
+            filteredCatalog.map((p) => (
+              <div 
+                key={p.id}
+                onClick={() => openEditProductModal(p)}
+                className="group relative flex flex-col rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm transition-all hover:border-neutral-900 hover:shadow-md cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-50 text-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-colors">
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
+                    {p.material}
                   </span>
                 </div>
-                <h3 className="mt-1.5 text-base font-semibold text-neutral-900">
+                
+                <h3 className="text-sm font-bold text-neutral-900 mb-1 truncate">{p.nome}</h3>
+                
+                <div className="mt-auto space-y-2 pt-4">
+                  <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                    <span>Custo Total:</span>
+                    <span className="font-bold text-neutral-900">{formatBRL(p.custoTotal)}</span>
+                  </div>
+                  {p.precoSugerido && p.precoSugerido > 0 && (
+                    <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                      <span>Preço Sugerido:</span>
+                      <span className="font-bold text-neutral-900">{formatBRL(p.precoSugerido)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Edit2 className="h-4 w-4 text-neutral-400" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Performance View - Original Table */
+        <div className="rounded-2xl border border-neutral-100 bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-neutral-100 bg-neutral-50/50 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                <tr>
+                  <th className="py-4 px-6">Produto</th>
+                  <th className="py-4 px-4 text-center">Vendas</th>
+                  <th className="py-4 px-4 text-right">Média Lucro</th>
+                  <th className="py-4 px-4 text-right">Margem %</th>
+                  <th className="py-4 px-4 text-right">Total Lucro</th>
+                  <th className="py-4 pr-6 pl-2 text-right">Detalhes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-50 text-neutral-700">
+                {filteredSummaries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-20 text-center text-neutral-400">
+                      Aguardando vendas para gerar performance.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSummaries.map((p) => (
+                    <tr
+                      key={p.produto}
+                      className="cursor-pointer transition-colors hover:bg-neutral-50/50"
+                      onClick={() => setSelectedProductForDetail(p.produto)}
+                    >
+                      <td className="py-4 px-6 font-bold text-neutral-900 max-w-xs truncate">
+                        {p.produto}
+                      </td>
+                      <td className="py-4 px-4 text-center font-bold text-neutral-900">
+                        {p.totalVendas}
+                      </td>
+                      <td className="py-4 px-4 text-right whitespace-nowrap font-medium text-emerald-600">
+                        {formatBRL(p.lucroMedio)}
+                      </td>
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
+                          {p.margemMedia.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right whitespace-nowrap font-bold text-emerald-600">
+                        {formatBRL(p.lucroTotal)}
+                      </td>
+                      <td className="py-4 pr-6 pl-2 text-right">
+                        <ArrowRight className="h-4 w-4 text-neutral-300 ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Product Detail Modal (Performance) */}
+      {selectedProductSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-neutral-100 p-6">
+              <div>
+                <h3 className="text-lg font-bold text-neutral-900">
                   {selectedProductSummary.produto}
                 </h3>
+                <p className="text-xs text-neutral-500">Métricas detalhadas e histórico de vendas</p>
               </div>
-
               <button
                 onClick={() => setSelectedProductForDetail(null)}
-                className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                className="rounded-xl p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Modal KPI Grid */}
-            <div className="grid grid-cols-2 gap-3 border-b border-neutral-100 bg-neutral-50/50 p-5 sm:grid-cols-4">
-              <div className="rounded-lg border border-neutral-200 bg-white p-3">
-                <span className="text-[10px] font-medium uppercase text-neutral-400">
-                  Total de Vendas
-                </span>
-                <div className="mt-1 text-lg font-semibold text-neutral-900">
-                  {selectedProductSummary.totalVendas} un
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Total Vendas</span>
+                  <div className="mt-1 text-xl font-bold text-neutral-900">{selectedProductSummary.totalVendas}</div>
+                </div>
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Faturamento</span>
+                  <div className="mt-1 text-xl font-bold text-neutral-900">{formatBRL(selectedProductSummary.faturamentoTotal)}</div>
+                </div>
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Lucro Total</span>
+                  <div className="mt-1 text-xl font-bold text-emerald-600">{formatBRL(selectedProductSummary.lucroTotal)}</div>
+                </div>
+                <div className="rounded-2xl border border-neutral-100 bg-neutral-50/50 p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Margem Média</span>
+                  <div className="mt-1 text-xl font-bold text-neutral-900">{selectedProductSummary.margemMedia.toFixed(1)}%</div>
                 </div>
               </div>
-              <div className="rounded-lg border border-neutral-200 bg-white p-3">
-                <span className="text-[10px] font-medium uppercase text-neutral-400">
-                  Faturamento Total
-                </span>
-                <div className="mt-1 text-lg font-semibold text-neutral-900">
-                  {formatBRL(selectedProductSummary.faturamentoTotal)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white p-3">
-                <span className="text-[10px] font-medium uppercase text-neutral-400">
-                  Lucro Líquido Total
-                </span>
-                <div className="mt-1 text-lg font-semibold text-emerald-600">
-                  {formatBRL(selectedProductSummary.lucroTotal)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-neutral-200 bg-white p-3">
-                <span className="text-[10px] font-medium uppercase text-neutral-400">
-                  Margem Média
-                </span>
-                <div className="mt-1 text-lg font-semibold text-neutral-900">
-                  {selectedProductSummary.margemMedia.toFixed(1)}%
-                </div>
-              </div>
-            </div>
 
-            {/* Sales History List */}
-            <div className="flex-1 overflow-y-auto p-5">
-              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                Histórico de Vendas Deste Produto ({selectedProductSales.length})
-              </h4>
-
-              <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-neutral-50 text-[10px] font-medium uppercase text-neutral-500">
-                    <tr>
-                      <th className="py-2.5 px-3">Data</th>
-                      <th className="py-2.5 px-3">Marketplace</th>
-                      <th className="py-2.5 px-3">Material</th>
-                      <th className="py-2.5 px-3 text-right">Custo</th>
-                      <th className="py-2.5 px-3 text-right">Venda</th>
-                      <th className="py-2.5 px-3 text-right">Taxa</th>
-                      <th className="py-2.5 px-3 text-right">Repasse</th>
-                      <th className="py-2.5 px-3 text-right">Lucro</th>
-                      <th className="py-2.5 px-3 text-right">%</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100 text-neutral-700">
-                    {selectedProductSales.map((s) => (
-                      <tr key={s.id} className="hover:bg-neutral-50/70">
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-neutral-600">
-                          {formatDateBR(s.data)}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span
-                            className={`rounded-sm px-1.5 py-0.5 text-[9px] font-semibold ${
-                              s.marketplace === 'SHOPEE'
-                                ? 'bg-amber-50 text-amber-800'
-                                : 'bg-yellow-50 text-yellow-900'
-                            }`}
-                          >
-                            {s.marketplace}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-neutral-600">{s.material}</td>
-                        <td className="py-2.5 px-3 text-right">{formatBRL(s.custo)}</td>
-                        <td className="py-2.5 px-3 text-right font-medium text-neutral-900">
-                          {formatBRL(s.venda)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-amber-700">{formatBRL(s.taxa)}</td>
-                        <td className="py-2.5 px-3 text-right">{formatBRL(s.repasse)}</td>
-                        <td className="py-2.5 px-3 text-right font-semibold text-emerald-600">
-                          {formatBRL(s.lucro)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-medium">
-                          {s.porcentagem.toFixed(1)}%
-                        </td>
+              <div>
+                <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Histórico de Transações</h4>
+                <div className="overflow-hidden rounded-2xl border border-neutral-100">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-neutral-50 text-[10px] font-bold uppercase text-neutral-400">
+                      <tr>
+                        <th className="py-3 px-4">Data</th>
+                        <th className="py-3 px-4">Canal</th>
+                        <th className="py-3 px-4 text-right">Venda</th>
+                        <th className="py-3 px-4 text-right">Taxa</th>
+                        <th className="py-3 px-4 text-right">Lucro</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-50 text-neutral-600">
+                      {selectedProductSales.map((s) => (
+                        <tr key={s.id} className="hover:bg-neutral-50/50">
+                          <td className="py-3 px-4 font-mono">{formatDateBR(s.data)}</td>
+                          <td className="py-3 px-4">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
+                              {s.marketplace}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-medium text-neutral-900">{formatBRL(s.venda)}</td>
+                          <td className="py-3 px-4 text-right text-red-500">{formatBRL(s.taxa)}</td>
+                          <td className="py-3 px-4 text-right font-bold text-emerald-600">{formatBRL(s.lucro)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="border-t border-neutral-100 bg-neutral-50 px-5 py-3 text-right">
+            <div className="border-t border-neutral-100 bg-neutral-50 p-6 flex justify-end">
               <button
                 onClick={() => setSelectedProductForDetail(null)}
-                className="rounded-lg border border-neutral-200 bg-white px-4 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100"
+                className="rounded-xl bg-neutral-900 px-6 py-2 text-xs font-bold text-white hover:bg-neutral-800 transition-all"
               >
-                Fechar
+                Fechar Detalhes
               </button>
             </div>
           </div>
