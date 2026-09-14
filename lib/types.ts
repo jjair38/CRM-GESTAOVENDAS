@@ -84,14 +84,6 @@ export interface MonthSummary {
   margem: number;
 }
 
-export interface InsightItem {
-  id: string;
-  type: 'positive' | 'warning' | 'info' | 'highlight';
-  title: string;
-  description: string;
-  metric?: string;
-}
-
 // Helpers for currency and numbers
 export function formatBRL(value: number): string {
   if (isNaN(value) || value === null || value === undefined) return 'R$ 0,00';

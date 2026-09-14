@@ -8,7 +8,6 @@ import {
   ProductSummary,
   MarketplaceSummary,
   MonthSummary,
-  InsightItem,
   Product,
   calculateRepasse,
   calculateLucro,
@@ -103,7 +102,6 @@ interface CRMContextType {
   productSummaries: ProductSummary[];
   marketplaceSummaries: MarketplaceSummary[];
   monthlySummaries: MonthSummary[];
-  insights: InsightItem[];
   allProductNames: string[];
   allMaterials: string[];
   catalogProducts: Product[];
@@ -907,104 +905,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     });
   }, [filteredSales]);
 
-  // Intelligent dynamic insights
-  const insights: InsightItem[] = useMemo(() => {
-    if (filteredSales.length === 0) return [];
-    const list: InsightItem[] = [];
-
-    // Marketplace revenue share insight
-    const mlSummary = marketplaceSummaries.find((m) => m.marketplace === 'MERCADO LIVRE');
-    const shopeeSummary = marketplaceSummaries.find((m) => m.marketplace === 'SHOPEE');
-    if (kpis.faturamento > 0 && mlSummary && shopeeSummary) {
-      const mlShare = (mlSummary.faturamentoTotal / kpis.faturamento) * 100;
-      const shopeeShare = (shopeeSummary.faturamentoTotal / kpis.faturamento) * 100;
-
-      if (mlShare >= 50) {
-        list.push({
-          id: 'mkt-share',
-          type: 'info',
-          title: 'Canal Principal',
-          description: `Mercado Livre representa ${mlShare.toFixed(1)}% do faturamento no período filtrado.`,
-          metric: `${mlShare.toFixed(0)}%`,
-        });
-      } else {
-        list.push({
-          id: 'mkt-share',
-          type: 'info',
-          title: 'Canal Principal',
-          description: `Shopee representa ${shopeeShare.toFixed(1)}% do faturamento no período filtrado.`,
-          metric: `${shopeeShare.toFixed(0)}%`,
-        });
-      }
-    }
-
-    // Most profitable product
-    if (productSummaries.length > 0) {
-      const topProfitable = [...productSummaries].sort((a, b) => b.lucroTotal - a.lucroTotal)[0];
-      if (topProfitable && topProfitable.lucroTotal > 0) {
-        list.push({
-          id: 'top-product',
-          type: 'positive',
-          title: 'Produto Campeão de Lucro',
-          description: `Seu produto mais lucrativo foi "${topProfitable.produto}" gerando R$ ${topProfitable.lucroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de lucro líquido.`,
-          metric: `R$ ${topProfitable.lucroTotal.toFixed(0)}`,
-        });
-      }
-    }
-
-    // Month-over-month margin comparison
-    if (monthlySummaries.length >= 2) {
-      const currMonth = monthlySummaries[0];
-      const prevMonth = monthlySummaries[1];
-      const diffMargin = currMonth.margem - prevMonth.margem;
-      if (Math.abs(diffMargin) > 0.5) {
-        list.push({
-          id: 'margin-trend',
-          type: diffMargin >= 0 ? 'positive' : 'warning',
-          title: 'Evolução da Margem',
-          description: `A margem média ${diffMargin >= 0 ? 'aumentou' : 'diminuiu'} ${Math.abs(diffMargin).toFixed(1)}% em relação ao mês anterior (${prevMonth.label}).`,
-          metric: `${diffMargin >= 0 ? '+' : ''}${diffMargin.toFixed(1)}%`,
-        });
-      }
-    }
-
-    // High revenue but low margin alert
-    const highRevLowMargin = productSummaries.find(
-      (p) => p.faturamentoTotal > kpis.faturamento * 0.15 && p.margemMedia < 60
-    );
-    if (highRevLowMargin) {
-      list.push({
-        id: 'low-margin-alert',
-        type: 'warning',
-        title: 'Atenção à Margem',
-        description: `O produto "${highRevLowMargin.produto}" possui alto volume de faturamento, mas sua margem está abaixo da média (${highRevLowMargin.margemMedia.toFixed(1)}%).`,
-        metric: `${highRevLowMargin.margemMedia.toFixed(0)}%`,
-      });
-    }
-
-    // Loss-making records check
-    const lossSales = filteredSales.filter((s) => s.lucro < 0);
-    if (lossSales.length > 0) {
-      list.push({
-        id: 'loss-alert',
-        type: 'warning',
-        title: 'Prejuízo Identificado',
-        description: `Existem ${lossSales.length} venda(s) com lucro negativo no período. Verifique taxas e custos aplicados.`,
-        metric: `-${lossSales.length}`,
-      });
-    } else {
-      list.push({
-        id: 'healthy-profit',
-        type: 'highlight',
-        title: 'Operação 100% Positiva',
-        description: 'Todas as vendas no período registraram margem positiva de retorno.',
-        metric: '100%',
-      });
-    }
-
-    return list;
-  }, [filteredSales, kpis, marketplaceSummaries, productSummaries, monthlySummaries]);
-
   return (
     <CRMContext.Provider
       value={{
@@ -1038,7 +938,6 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         productSummaries,
         marketplaceSummaries,
         monthlySummaries,
-        insights,
         allProductNames,
         allMaterials,
         products,

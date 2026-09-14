@@ -10,9 +10,6 @@ import {
   TrendingUp,
   Percent,
   Receipt,
-  Sparkles,
-  AlertTriangle,
-  CheckCircle2,
   Package,
   Layers,
   Zap,
@@ -34,7 +31,7 @@ import {
 export default function DashboardView() {
   const {
     kpis,
-    insights,
+    filters,
     filteredSales,
     productSummaries,
     marketplaceSummaries,
@@ -170,62 +167,6 @@ export default function DashboardView() {
           </div>
         </div>
       </div>
-
-      {/* DASHBOARD INTELIGENTE: Seção INSIGHTS */}
-      {insights.length > 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-neutral-900" />
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-900">
-                Insights Automáticos do Período
-              </h2>
-            </div>
-            <span className="text-[11px] text-neutral-400">
-              Calculado em tempo real com base nos registros
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {insights.map((insight) => {
-              const isWarning = insight.type === 'warning';
-              const isPositive = insight.type === 'positive';
-              return (
-                <div
-                  key={insight.id}
-                  className={`rounded-lg border p-3.5 transition-colors ${
-                    isWarning
-                      ? 'border-amber-200 bg-amber-50/40 text-amber-900'
-                      : isPositive
-                      ? 'border-emerald-200 bg-emerald-50/40 text-emerald-950'
-                      : 'border-neutral-200 bg-neutral-50/50 text-neutral-800'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs font-semibold">{insight.title}</span>
-                    {insight.metric && (
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                          isWarning
-                            ? 'bg-amber-200/70 text-amber-900'
-                            : isPositive
-                            ? 'bg-emerald-200/70 text-emerald-800'
-                            : 'bg-neutral-200 text-neutral-800'
-                        }`}
-                      >
-                        {insight.metric}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1.5 text-xs text-neutral-600 leading-relaxed">
-                    {insight.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Main Analysis Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -528,82 +469,77 @@ export default function DashboardView() {
           </div>
         </div>
 
-        {/* 4. Custos: Composição (1 col) */}
+        {/* 4. Custos e Resumo Financeiro (Image Style) */}
         <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
-          <div className="border-b border-neutral-100 pb-4">
-            <h3 className="text-sm font-semibold text-neutral-900">
-              Composição dos Custos
-            </h3>
-            <p className="text-xs text-neutral-500">
-              Divisão por energia, filamento e máquina
-            </p>
+          <div className="mb-4 flex items-center justify-between border-b border-neutral-100 pb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-neutral-900">
+                Resumo Financeiro & Custos
+              </h3>
+              <p className="text-[11px] text-neutral-500">
+                Composição baseada nos registros do período
+              </p>
+            </div>
+            <Activity className="h-4 w-4 text-neutral-400" />
           </div>
 
-          <div className="mt-5 space-y-4">
-            {/* Total Cost Highlight */}
-            <div className="rounded-lg bg-neutral-50 p-3">
-              <div className="text-[11px] font-medium text-neutral-500">Custo Operacional Total</div>
-              <div className="mt-1 text-lg font-semibold text-neutral-900">
-                {formatBRL(kpis.custos)}
+          <div className="grid grid-cols-1 overflow-hidden border border-black font-sans uppercase md:grid-cols-2">
+            {/* Left Column: Revenue & Profit */}
+            <div className="flex flex-col border-b border-black md:border-b-0 md:border-r">
+              <div className="bg-black py-2 text-center text-xs font-bold text-white">
+                {filters.period === 'mes_atual' 
+                  ? new Date().toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()
+                  : filters.period === 'mes_anterior'
+                  ? (() => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - 1);
+                      return d.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
+                    })()
+                  : 'RESUMO'}
+              </div>
+              
+              <div className="flex justify-between border-b border-black bg-[#FF9F1C] px-4 py-2 text-xs font-bold text-black">
+                <span>Venda</span>
+                <span>{formatBRL(kpis.faturamento).replace('R$', '').trim()}</span>
+              </div>
+              
+              <div className="flex justify-between border-b border-black bg-white px-4 py-2 text-xs font-bold text-black">
+                <span>REPASSE</span>
+                <span>{formatBRL(kpis.repasse).replace('R$', '').trim()}</span>
+              </div>
+              
+              <div className="flex justify-between bg-[#98D266] px-4 py-2 text-xs font-bold text-black">
+                <span>LUCRO</span>
+                <span>{formatBRL(kpis.lucro).replace('R$', '').trim()}</span>
               </div>
             </div>
 
-            {/* Filamento */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Flame className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="font-medium text-neutral-800">Filamento (PLA / PETG)</span>
-                </div>
-                <span className="font-semibold text-neutral-900">
-                  {formatBRL(kpis.custoFilamento)} ({pctFilamento}%)
-                </span>
+            {/* Right Column: Costs */}
+            <div className="flex flex-col">
+              <div className="flex justify-between bg-[#FF0000] px-4 py-2 text-xs font-bold text-white">
+                <span>CUSTOS TOTAIS</span>
+                <span>{formatBRL(kpis.custos).replace('R$', '').trim()}</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-neutral-100">
-                <div
-                  className="h-2 rounded-full bg-amber-500"
-                  style={{ width: `${pctFilamento}%` }}
-                />
+              
+              <div className="flex justify-between border-b border-black bg-white px-4 py-2 text-xs font-bold text-black">
+                <span>Energia</span>
+                <span>{formatBRL(kpis.custoEnergia).replace('R$', '').trim()}</span>
+              </div>
+              
+              <div className="flex justify-between border-b border-black bg-white px-4 py-2 text-xs font-bold text-black">
+                <span>Filamento</span>
+                <span>{formatBRL(kpis.custoFilamento).replace('R$', '').trim()}</span>
+              </div>
+              
+              <div className="flex justify-between bg-white px-4 py-2 text-xs font-bold text-black">
+                <span>Manutenção</span>
+                <span>{formatBRL(kpis.custoManutencao).replace('R$', '').trim()}</span>
               </div>
             </div>
+          </div>
 
-            {/* Manutenção de Máquina */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5 text-indigo-500" />
-                  <span className="font-medium text-neutral-800">Manutenção (R$ 0,84/hora)</span>
-                </div>
-                <span className="font-semibold text-neutral-900">
-                  {formatBRL(kpis.custoManutencao)} ({pctManutencao}%)
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-neutral-100">
-                <div
-                  className="h-2 rounded-full bg-indigo-500"
-                  style={{ width: `${pctManutencao}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Energia */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                  <span className="font-medium text-neutral-800">Energia Elétrica</span>
-                </div>
-                <span className="font-semibold text-neutral-900">
-                  {formatBRL(kpis.custoEnergia)} ({pctEnergia}%)
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-neutral-100">
-                <div
-                  className="h-2 rounded-full bg-yellow-500"
-                  style={{ width: `${pctEnergia}%` }}
-                />
-              </div>
-            </div>
+          <div className="mt-4 text-[10px] text-neutral-400 italic">
+            * Valores em Reais (BRL). Repasse = Venda - Taxas. Lucro = Repasse - Custos.
           </div>
         </div>
       </div>
