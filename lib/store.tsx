@@ -12,6 +12,7 @@ import {
   calculateRepasse,
   calculateLucro,
   calculatePorcentagem,
+  parseDateToISO,
 } from './types';
 import { generateInitialSales } from './sampleData';
 import { 
@@ -98,6 +99,7 @@ interface CRMContextType {
     custoEnergia: number;
     custoFilamento: number;
     custoManutencao: number;
+    margemLiquida: number;
   };
   productSummaries: ProductSummary[];
   marketplaceSummaries: MarketplaceSummary[];
@@ -263,8 +265,13 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(storedSales);
           if (Array.isArray(parsed)) {
+            // Normalizar datas de registros existentes
+            const normalized = parsed.map(s => ({
+              ...s,
+              data: parseDateToISO(s.data)
+            }));
             setTimeout(() => {
-              if (isMounted) setSales(parsed);
+              if (isMounted) setSales(normalized);
             }, 0);
           }
         } catch (e) { console.warn('Failed to parse sales'); }
@@ -500,19 +507,24 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   };
 
   const importSales = (newSales: SaleItem[]) => {
+    const normalizedSales = newSales.map(s => ({
+      ...s,
+      data: parseDateToISO(s.data)
+    }));
+
     if (user) {
       const batch = writeBatch(db);
-      newSales.forEach((sale) => {
+      normalizedSales.forEach((sale) => {
         const id = sale.id || `sale-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
         const saleWithId = { ...sale, id, createdAt: sale.createdAt || new Date().toISOString() };
         const docRef = doc(db, 'users', user.uid, 'sales', id);
-        batch.set(docRef, saleWithId); // set with merge or just set? Batch set is fine for upsert if we want to overwrite
+        batch.set(docRef, saleWithId);
       });
       batch.commit().catch(e => console.error('Error batch importing:', e));
     } else {
       setSales((prev) => {
         const updatedSales = [...prev];
-        newSales.forEach(newSale => {
+        normalizedSales.forEach(newSale => {
           const index = updatedSales.findIndex(s => s.id === newSale.id);
           if (index !== -1) {
             updatedSales[index] = { ...updatedSales[index], ...newSale };
@@ -523,7 +535,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         return updatedSales;
       });
     }
-    return newSales.length;
+    return normalizedSales.length;
   };
 
   const clearAllSales = async () => {
@@ -654,7 +666,8 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
       // Date / Period filter
       if (filters.period !== 'todos') {
-        const itemDateStr = item.data; // YYYY-MM-DD
+        // Garantir que a data está em formato ISO para comparação segura
+        const itemDateStr = parseDateToISO(item.data); 
         if (!itemDateStr) return true;
 
         const now = new Date();
@@ -711,6 +724,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
     const totalVendas = filteredSales.length;
     const margemMedia = custos > 0 ? (lucro / custos) * 100 : 0;
+    const margemLiquida = faturamento > 0 ? (lucro / faturamento) * 100 : 0;
     const ticketMedio = totalVendas > 0 ? faturamento / totalVendas : 0;
 
     return {
@@ -720,6 +734,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       taxas: Number(taxas.toFixed(2)),
       lucro: Number(lucro.toFixed(2)),
       margemMedia: Number(margemMedia.toFixed(2)),
+      margemLiquida: Number(margemLiquida.toFixed(2)),
       totalVendas,
       ticketMedio: Number(ticketMedio.toFixed(2)),
       custoEnergia: Number(custoEnergia.toFixed(2)),
@@ -831,8 +846,11 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     const map = new Map<string, SaleItem[]>();
     // Base on filteredSales to react to marketplace/product/material filters
     filteredSales.forEach((s) => {
-      const mesAno = s.data.substring(0, 7); // YYYY-MM
-      if (!mesAno) return;
+      // Normalizar data para garantir que substring(0,7) funcione corretamente
+      const isoDate = parseDateToISO(s.data);
+      if (!isoDate || isoDate.length < 7) return;
+      
+      const mesAno = isoDate.substring(0, 7); // YYYY-MM
       if (!map.has(mesAno)) map.set(mesAno, []);
       map.get(mesAno)!.push(s);
     });

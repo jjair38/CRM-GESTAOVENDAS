@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useCRM } from '@/lib/store';
 import { formatBRL, formatPercent } from '@/lib/types';
 import {
@@ -15,17 +15,24 @@ import {
   Zap,
   Activity,
   Flame,
+  ShoppingBag,
+  Tag,
+  PieChart,
 } from 'lucide-react';
 
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Cell,
+  Area,
+  AreaChart,
 } from 'recharts';
 
 export default function DashboardView() {
@@ -41,6 +48,29 @@ export default function DashboardView() {
   } = useCRM();
 
   const [productRankingTab, setProductRankingTab] = useState<'vendidos' | 'lucrativos'>('lucrativos');
+
+  // Aggregated daily data for the trend chart
+  const dailyTrendData = useMemo(() => {
+    const map = new Map<string, { date: string, faturamento: number }>();
+    
+    // Group sales by date
+    filteredSales.forEach((sale) => {
+      const date = sale.data;
+      if (!map.has(date)) {
+        map.set(date, { date, faturamento: 0 });
+      }
+      map.get(date)!.faturamento += sale.venda;
+    });
+
+    // Convert to array and sort chronologically
+    let data = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return data.map(item => ({
+      ...item,
+      label: item.date.split('-').reverse().slice(0, 2).join('/'), // DD/MM
+      fullDate: item.date.split('-').reverse().join('/'), // DD/MM/YYYY
+    }));
+  }, [filteredSales]);
 
   // Prepare data for the chart (reversed to show chronological order)
   const chartData = [...monthlySummaries].reverse().slice(-6); // Last 6 months
@@ -64,107 +94,230 @@ export default function DashboardView() {
   const ml = marketplaceSummaries.find((m) => m.marketplace === 'MERCADO LIVRE');
 
   return (
-    <div id="dashboard-view" className="space-y-6">
-      {/* Top KPI Cards - Minimalist & High-Contrast */}
+    <div id="dashboard-view" className="space-y-8">
+      {/* 1. Cards de Resumo - High Level Indicators */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Vendas Totais */}
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="rounded-lg bg-neutral-100 p-2.5">
+              <ShoppingBag className="h-5 w-5 text-neutral-600" />
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Tempo Real</div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-neutral-500">Vendas Totais</h4>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-3xl font-bold tracking-tight text-neutral-900 tabular-nums">
+                {kpis.totalVendas}
+              </span>
+              <span className="text-xs font-medium text-neutral-400">pedidos</span>
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 opacity-5">
+            <ShoppingBag className="h-24 w-24" />
+          </div>
+        </div>
+
+        {/* Ticket Médio */}
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="rounded-lg bg-emerald-50 p-2.5">
+              <Tag className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Eficiência</div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-neutral-500">Ticket Médio</h4>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-3xl font-bold tracking-tight text-neutral-900 tabular-nums">
+                {formatBRL(kpis.ticketMedio)}
+              </span>
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 opacity-5">
+            <Tag className="h-24 w-24" />
+          </div>
+        </div>
+
+        {/* Margem Líquida Total */}
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="rounded-lg bg-blue-50 p-2.5">
+              <PieChart className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Rentabilidade</div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-neutral-500">Margem Líquida</h4>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-3xl font-bold tracking-tight text-neutral-900 tabular-nums">
+                {formatPercent(kpis.margemLiquida)}
+              </span>
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 opacity-5">
+            <PieChart className="h-24 w-24" />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Detalhamento de KPIs */}
       <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-6">
         {/* Faturamento */}
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
-              Faturamento
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              Bruto
             </span>
             <DollarSign className="h-3.5 w-3.5 text-neutral-400" />
           </div>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-neutral-900">
+          <div className="mt-2 text-lg font-bold tracking-tight text-neutral-900 tabular-nums">
             {formatBRL(kpis.faturamento)}
           </div>
-          <div className="mt-1 flex items-center text-[11px] text-neutral-500">
-            <span>{kpis.totalVendas} vendas no período</span>
-          </div>
+          <div className="mt-1 text-[10px] text-neutral-400">Faturamento total</div>
         </div>
 
         {/* Repasse */}
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
               Repasse
             </span>
             <Receipt className="h-3.5 w-3.5 text-neutral-400" />
           </div>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-emerald-700">
+          <div className="mt-2 text-lg font-bold tracking-tight text-emerald-700 tabular-nums">
             {formatBRL(kpis.repasse)}
           </div>
-          <div className="mt-1 flex items-center text-[11px] text-neutral-500">
-            <span>Líquido pós-taxa</span>
-          </div>
+          <div className="mt-1 text-[10px] text-neutral-400">Pós-taxas mkt</div>
         </div>
 
         {/* Custos */}
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
               Custos
             </span>
             <Layers className="h-3.5 w-3.5 text-neutral-400" />
           </div>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-neutral-800">
+          <div className="mt-2 text-lg font-bold tracking-tight text-neutral-800 tabular-nums">
             {formatBRL(kpis.custos)}
           </div>
-          <div className="mt-1 flex items-center text-[11px] text-neutral-500">
-            <span>Insumos & máquina</span>
-          </div>
+          <div className="mt-1 text-[10px] text-neutral-400">Insumos fixos</div>
         </div>
 
         {/* Taxas */}
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
               Taxas
             </span>
             <ArrowDownRight className="h-3.5 w-3.5 text-neutral-400" />
           </div>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-amber-700">
+          <div className="mt-2 text-lg font-bold tracking-tight text-amber-700 tabular-nums">
             {formatBRL(kpis.taxas)}
           </div>
-          <div className="mt-1 flex items-center text-[11px] text-neutral-500">
-            <span>
-              {kpis.faturamento > 0
-                ? `${((kpis.taxas / kpis.faturamento) * 100).toFixed(1)}% do total`
-                : '0%'}
-            </span>
+          <div className="mt-1 text-[10px] text-neutral-400">
+            {kpis.faturamento > 0
+              ? `${((kpis.taxas / kpis.faturamento) * 100).toFixed(1)}% fatur.`
+              : '0%'}
           </div>
         </div>
 
         {/* Lucro */}
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
               Lucro
             </span>
             <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
           </div>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-emerald-600">
+          <div className="mt-2 text-lg font-bold tracking-tight text-emerald-600 tabular-nums">
             {formatBRL(kpis.lucro)}
           </div>
-          <div className="mt-1 flex items-center text-[11px] text-emerald-700">
-            <span>Repasse - Custos</span>
-          </div>
+          <div className="mt-1 text-[10px] text-emerald-700 font-medium">Líquido final</div>
         </div>
 
-        {/* Margem Média */}
+        {/* Markup (Margem s/ custo) */}
         <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
-              Margem
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              Markup
             </span>
             <Percent className="h-3.5 w-3.5 text-neutral-400" />
           </div>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-neutral-900">
+          <div className="mt-2 text-lg font-bold tracking-tight text-neutral-900 tabular-nums">
             {formatPercent(kpis.margemMedia)}
           </div>
-          <div className="mt-1 flex items-center text-[11px] text-neutral-500">
-            <span>Sobre o custo</span>
+          <div className="mt-1 text-[10px] text-neutral-400">Margem s/ custo</div>
+        </div>
+      </div>
+
+      {/* Daily Revenue Trend Chart */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-neutral-900">
+              Tendência de Faturamento Diário
+            </h3>
+            <p className="text-xs text-neutral-500">
+              Desempenho por dia no período selecionado
+            </p>
           </div>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="h-0.5 w-4 bg-emerald-500" />
+              <span className="text-neutral-600 font-medium">Faturamento</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 h-[300px] w-full">
+          {dailyTrendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="label" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#888' }} 
+                  dy={10}
+                  minTickGap={30}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#888' }} 
+                  tickFormatter={(value) => `R$ ${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
+                />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontSize: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [formatBRL(Number(value) || 0), 'Faturamento']}
+                  labelFormatter={(label, payload) => payload[0]?.payload?.fullDate || label}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="faturamento" 
+                  stroke="#10b981" 
+                  strokeWidth={2}
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                  animationDuration={1000}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-neutral-400 italic">
+              Nenhuma venda registrada no período para gerar tendência.
+            </div>
+          )}
         </div>
       </div>
 

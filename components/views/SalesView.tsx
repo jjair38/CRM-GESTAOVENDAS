@@ -165,22 +165,22 @@ export default function SalesView() {
 
           <button
             id="export-csv-btn"
-            onClick={() => exportSalesToCSV(filteredSales)}
+            onClick={() => exportSalesToCSV(sortedSales)}
             className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-            title="Exportar para arquivo CSV"
+            title="Exportar tabela atual (filtrada e ordenada) para CSV"
           >
             <Download className="h-3.5 w-3.5" />
-            <span>CSV</span>
+            <span>Exportar CSV</span>
           </button>
 
           <button
             id="export-excel-btn"
-            onClick={() => exportSalesToExcel(filteredSales)}
+            onClick={() => exportSalesToExcel(sortedSales)}
             className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-            title="Exportar para arquivo Excel .xlsx"
+            title="Exportar tabela atual (filtrada e ordenada) para Excel .xlsx"
           >
             <Download className="h-3.5 w-3.5" />
-            <span>Excel</span>
+            <span>Exportar Excel</span>
           </button>
 
           <div className="h-6 w-px bg-neutral-200 mx-1 hidden sm:block" />
